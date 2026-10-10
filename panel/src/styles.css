@@ -94,6 +94,27 @@ body {
 /* ============================================================================
    背景：极细网格 + 纸张噪点 + 低透明度拓扑节点（全部静态/合成层动画）
    ========================================================================== */
+.bg-art {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  /* 放得更大、压到画面下沿：只留一道地平线暖光，而不是一个漂浮的圆 */
+  background-size: 165%;
+  background-position: 50% 104%;
+  opacity: 0.3;
+  mix-blend-mode: screen;
+}
+
+/* 底图下方的压暗，避免暖光顶到内容区 */
+.bg-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, transparent 18%, rgba(14, 17, 20, 0.55) 52%, rgba(14, 17, 20, 0.9) 78%);
+}
+
 .bg-grid {
   position: fixed;
   inset: 0;

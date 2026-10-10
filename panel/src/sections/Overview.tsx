@@ -4,6 +4,7 @@ import { useConsole } from '../lib/console';
 import { usePoll } from '../hooks/usePoll';
 import { fmtInt, fmtMs, fmtPct, fmtUptime, parseLogLine, statusTone } from '../lib/format';
 import { Card, Dot, Loading, Row, Rows, Skeleton, Stat } from '../components/ui/primitives';
+import { HeroBand } from '../components/layout/HeroBand';
 import { Sparkline } from '../components/ui/charts';
 import { IconCert, IconConsumers, IconPlay, IconRefresh, IconRoutes, IconUpstream } from '../components/sketch/icons';
 
@@ -32,6 +33,8 @@ export default function Overview({ onNavigate }: { onNavigate: (id: string) => v
 
   return (
     <div className="flex flex-col gap-3">
+      <HeroBand />
+
       {/* KPI */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat

@@ -1,12 +1,25 @@
 /**
- * 背景层：极细网格 + 纸张噪点 + 低透明度拓扑节点呼吸。
+ * 背景层：艺术底图（环境光）+ 极细网格 + 纸张噪点 + 低透明度拓扑节点呼吸。
  *
  * 性能取舍：全部是静态 DOM + 纯 CSS（仅 opacity/transform 动画，走合成层），
  * 不使用 canvas、粒子、视频或连线动效；节点数量克制（7 个，其中 4 个呼吸）。
+ *
+ * 底图用 screen 混合：图片本身的近黑底色乘出来是零，只有日出与山脊的暖光
+ * 会浮上来，所以既能给控制台一点情绪，又不会把界面洗灰。图片缺失时这一层
+ * 什么都不画，背景自动退化成纯网格。
  */
 export default function Background() {
   return (
     <>
+      {/* 环境光底图：贴底、居中、四周用 mask 化开 */}
+      <div
+        className="bg-art"
+        style={{
+          backgroundImage: 'url(/art/horizon.jpg)',
+          maskImage: 'radial-gradient(120% 100% at 50% 88%, #000 8%, rgba(0,0,0,.45) 46%, transparent 82%)',
+          WebkitMaskImage: 'radial-gradient(120% 100% at 50% 88%, #000 8%, rgba(0,0,0,.45) 46%, transparent 82%)',
+        }}
+      />
       <div className="bg-grid" />
       <div className="bg-noise" />
       <svg className="bg-topology" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden>

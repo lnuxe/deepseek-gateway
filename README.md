@@ -87,6 +87,13 @@ Dark graphite console with a low-saturation blue-green accent, warm-white text,
 system font stack. Background is a fine grid, paper noise and a low-opacity
 topology that breathes — pure CSS/SVG, no canvas, no particles, no video.
 
+A local artwork layer sits on top of that: `panel/public/art/horizon.jpg` is
+blended with `mix-blend-mode: screen` and masked to the lower edge, so only its
+warm horizon glow reaches the UI, plus `horizon-band.jpg` as the illustrated
+strip in the overview banner. Drop any 16:9 image in `panel/public/art/` to swap
+it (that folder is gitignored — third-party art stays out of the repo, and the
+interface degrades to the plain grid when the files are absent).
+
 Hand-drawn artwork is confined to icons, empty states, dividers and the title
 scribble: single-colour thin strokes with a `feTurbulence` + `feDisplacementMap`
 filter for the slight pen wobble (`sk-rough`). Icons are an original SVG set;

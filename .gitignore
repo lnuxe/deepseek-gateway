@@ -27,3 +27,6 @@ desktop.ini
 # panel build output + renderer scratch (both reproducible: npm run build / python render.py)
 panel/dist/
 tools/render-bg/.frames/
+
+# local art assets (not authored for this repo — drop your own images in panel/public/art/)
+panel/public/art/

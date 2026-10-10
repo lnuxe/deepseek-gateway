@@ -61,16 +61,21 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
-/** Serve a file out of panel/dist (the built React console). Returns false if absent. */
-const gzipCache = new Map();          // path -> Buffer，避免每次请求都重新压缩
+/**
+ * Serve a file out of panel/dist (the built React console). Returns false if absent.
+ *
+ * 压缩缓存只对带内容哈希的 assets/ 生效：其它文件（尤其是 index.html）改名不换路径，
+ * 一旦缓存就会在重新构建后把旧 HTML 发出去，导致引用到已删除的旧 chunk。
+ */
+const gzipCache = new Map();          // key -> Buffer
 const GZIP_TYPES = new Set(['.js', '.mjs', '.css', '.svg', '.json', '.html']);
 
-function compressed(file, buf) {
-  const hit = gzipCache.get(file);
-  if (hit && hit.length) return hit;
+function compressed(key, buf) {
+  const hit = gzipCache.get(key);
+  if (hit) return hit;
   const out = zlib.gzipSync(buf, { level: 6 });
   if (gzipCache.size > 32) gzipCache.clear();
-  gzipCache.set(file, out);
+  gzipCache.set(key, out);
   return out;
 }
 
@@ -87,18 +92,15 @@ function serveDist(res, relPath, acceptEncoding = '') {
   if (!stat.isFile()) return false;
   const ext = path.extname(file).toLowerCase();
   const isHtml = ext === '.html';
+  const isHashed = clean.startsWith('assets/');
   // 带哈希的构建产物可以长期强缓存；入口 HTML 永不缓存，保证改完刷新即生效
-  const cacheControl = isHtml
-    ? 'no-store'
-    : clean.startsWith('assets/')
-      ? 'public, max-age=31536000, immutable'
-      : 'public, max-age=3600';
+  const cacheControl = isHtml ? 'no-store' : isHashed ? 'public, max-age=31536000, immutable' : 'public, max-age=3600';
 
   const headers = { 'cache-control': cacheControl };
   let body = fs.readFileSync(file);
 
   if (GZIP_TYPES.has(ext) && /\bgzip\b/i.test(acceptEncoding)) {
-    body = compressed(file, body);
+    body = isHashed ? compressed(`${clean}:${stat.size}`, body) : zlib.gzipSync(body, { level: 6 });
     headers['content-encoding'] = 'gzip';
     headers.vary = 'accept-encoding';
   }
@@ -541,8 +543,9 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'POST') req.on('error', () => {});
   res.on('finish', () => {
-    const isStatic = url.pathname.startsWith('/assets') || url.pathname.startsWith('/bg')
-      || url.pathname === '/favicon.svg' || url.pathname === '/apple-touch-icon.png';
+    // 静态资源（控制台产物、图标、底图）不算网关调用，别污染请求日志与指标
+    const isStatic = /^\/assets\/|^\/art\/|^\/bg\//.test(url.pathname)
+      || /\.(ico|png|jpe?g|webp|svg|woff2?|map)$/i.test(url.pathname);
     if (route.startsWith('/api') || isStatic || route === '/' || route === '/panel' || route === '/ui') return;
     recordMetric(url.pathname, res.statusCode, Date.now() - started);
     if (res.statusCode >= 400) {
