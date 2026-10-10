@@ -34,6 +34,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import tls from 'node:tls';
+import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -59,8 +61,20 @@ const MIME = {
   '.ico': 'image/x-icon',
 };
 
-/** Serve a file out of panel/dist (the built React panel). Returns false if absent. */
-function serveDist(res, relPath) {
+/** Serve a file out of panel/dist (the built React console). Returns false if absent. */
+const gzipCache = new Map();          // path -> Buffer，避免每次请求都重新压缩
+const GZIP_TYPES = new Set(['.js', '.mjs', '.css', '.svg', '.json', '.html']);
+
+function compressed(file, buf) {
+  const hit = gzipCache.get(file);
+  if (hit && hit.length) return hit;
+  const out = zlib.gzipSync(buf, { level: 6 });
+  if (gzipCache.size > 32) gzipCache.clear();
+  gzipCache.set(file, out);
+  return out;
+}
+
+function serveDist(res, relPath, acceptEncoding = '') {
   const clean = decodeURIComponent(relPath).replace(/^\/+/, '');
   const file = path.join(PANEL_DIST, clean || 'index.html');
   if (!file.startsWith(PANEL_DIST)) return false;
@@ -72,12 +86,27 @@ function serveDist(res, relPath) {
   }
   if (!stat.isFile()) return false;
   const ext = path.extname(file).toLowerCase();
-  res.writeHead(200, {
-    'content-type': MIME[ext] || 'application/octet-stream',
-    'content-length': stat.size,
-    'cache-control': ext === '.html' ? 'no-store' : 'public, max-age=3600',
-  });
-  fs.createReadStream(file).pipe(res);
+  const isHtml = ext === '.html';
+  // 带哈希的构建产物可以长期强缓存；入口 HTML 永不缓存，保证改完刷新即生效
+  const cacheControl = isHtml
+    ? 'no-store'
+    : clean.startsWith('assets/')
+      ? 'public, max-age=31536000, immutable'
+      : 'public, max-age=3600';
+
+  const headers = { 'cache-control': cacheControl };
+  let body = fs.readFileSync(file);
+
+  if (GZIP_TYPES.has(ext) && /\bgzip\b/i.test(acceptEncoding)) {
+    body = compressed(file, body);
+    headers['content-encoding'] = 'gzip';
+    headers.vary = 'accept-encoding';
+  }
+  headers['content-type'] = MIME[ext] || 'application/octet-stream';
+  headers['content-length'] = body.length;
+
+  res.writeHead(200, headers);
+  res.end(body);
   return true;
 }
 
@@ -102,6 +131,145 @@ const FORWARD_KEYS = new Set([
 ]);
 
 const stats = { startedAt: Date.now(), requests: 0 };
+
+// ---------------------------------------------------------------- metrics ----
+// Tiny in-process metrics: per-route counters, status buckets, a rolling
+// one-minute series and a bounded latency sample buffer. No dependencies, no
+// allocation churn on the hot path.
+const METRIC_ROUTES = [
+  '/v1/chat/completions', '/v1/messages', '/v1/models',
+  '/v1/embeddings', '/v1/completions', '/healthz', 'other',
+];
+const metrics = {
+  byRoute: new Map(METRIC_ROUTES.map((r) => [r, { route: r, count: 0, errors: 0, totalMs: 0 }])),
+  byStatus: new Map(),
+  minutes: Array.from({ length: 60 }, () => ({ count: 0, errors: 0 })),
+  minuteStamp: new Date().getMinutes(),
+  latencies: [],
+  lastError: null,
+};
+
+function metricRoute(pathname) {
+  const clean = pathname.replace(/^\/v1(?=\/|$)/, '/v1');
+  return METRIC_ROUTES.includes(clean) ? clean : 'other';
+}
+
+function recordMetric(pathname, statusCode, ms) {
+  const route = metricRoute(pathname);
+  const bucket = metrics.byRoute.get(route);
+  if (bucket) {
+    bucket.count += 1;
+    bucket.totalMs += ms;
+    if (statusCode >= 400) bucket.errors += 1;
+  }
+  metrics.byStatus.set(statusCode, (metrics.byStatus.get(statusCode) ?? 0) + 1);
+
+  const minute = new Date().getMinutes();
+  if (minute !== metrics.minuteStamp) {
+    const gap = (minute - metrics.minuteStamp + 60) % 60;
+    for (let i = 0; i < gap; i += 1) metrics.minutes.push({ count: 0, errors: 0 });
+    metrics.minutes.splice(0, Math.max(0, metrics.minutes.length - 60));
+    metrics.minuteStamp = minute;
+  }
+  const now = metrics.minutes[metrics.minutes.length - 1];
+  now.count += 1;
+  if (statusCode >= 400) now.errors += 1;
+
+  if (ms >= 0) {
+    metrics.latencies.push(ms);
+    if (metrics.latencies.length > 500) metrics.latencies.shift();
+  }
+}
+
+function percentile(samples, p) {
+  if (samples.length === 0) return 0;
+  const sorted = [...samples].sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length));
+  return Math.round(sorted[idx]);
+}
+
+function metricsSnapshot() {
+  const total = [...metrics.byRoute.values()].reduce((sum, r) => sum + r.count, 0);
+  const errors = [...metrics.byRoute.values()].reduce((sum, r) => sum + r.errors, 0);
+  const lastMinute = metrics.minutes[metrics.minutes.length - 1].count;
+  const prevMinute = metrics.minutes[metrics.minutes.length - 2]?.count ?? 0;
+  return {
+    uptimeSec: Math.floor((Date.now() - stats.startedAt) / 1000),
+    total,
+    errors,
+    errorRate: total ? +(errors / total).toFixed(4) : 0,
+    rpm: lastMinute,
+    rpmDelta: lastMinute - prevMinute,
+    p50: percentile(metrics.latencies, 50),
+    p95: percentile(metrics.latencies, 95),
+    byRoute: [...metrics.byRoute.values()].map((r) => ({
+      route: r.route,
+      count: r.count,
+      errors: r.errors,
+      avgMs: r.count ? Math.round(r.totalMs / r.count) : 0,
+    })),
+    byStatus: [...metrics.byStatus.entries()].map(([status, count]) => ({ status, count })).sort((a, b) => a.status - b.status),
+    series: metrics.minutes.map((m, i) => ({
+      offset: metrics.minutes.length - 1 - i,
+      count: m.count,
+      errors: m.errors,
+    })),
+    lastError: metrics.lastError,
+  };
+}
+
+// ----------------------------------------------------------------- routes ----
+// The routes this gateway actually serves, described for the console.
+const ROUTE_TABLE = [
+  { id: 'chat', methods: ['POST'], path: '/v1/chat/completions', upstream: 'openai', target: '/v1/chat/completions', note: 'OpenAI 兼容对话，支持流式与工具调用' },
+  { id: 'messages', methods: ['POST'], path: '/v1/messages', upstream: 'anthropic', target: '/v1/messages', note: 'Anthropic Messages 协议' },
+  { id: 'models', methods: ['GET'], path: '/v1/models', upstream: 'local', target: '—', note: '模型清单，供客户端校验端点' },
+  { id: 'embeddings', methods: ['POST'], path: '/v1/embeddings', upstream: 'openai', target: '/v1/embeddings', note: '透传' },
+  { id: 'completions', methods: ['POST'], path: '/v1/completions', upstream: 'openai', target: '/v1/completions', note: '透传' },
+  { id: 'health', methods: ['GET'], path: '/healthz', upstream: 'local', target: '—', note: '存活与配置快照' },
+];
+
+// -------------------------------------------------------------------- tls ----
+let tlsCache = { at: 0, data: null };
+
+async function tlsInfo() {
+  if (Date.now() - tlsCache.at < 10 * 60 * 1000 && tlsCache.data) return tlsCache.data;
+  const host = new URL(cfg.upstream).hostname;
+  const port = Number(new URL(cfg.upstream).port || 443);
+  const data = await new Promise((resolve) => {
+    const socket = tls.connect({ host, port, servername: host, timeout: 8000 }, () => {
+      try {
+        const cert = socket.getPeerCertificate(true);
+        const cipher = socket.getCipher();
+        const validTo = new Date(cert.valid_to);
+        resolve({
+          host,
+          port,
+          authorized: socket.authorized,
+          authorizationError: socket.authorizationError ? String(socket.authorizationError) : null,
+          protocol: socket.getProtocol(),
+          cipher: cipher ? `${cipher.name} · ${cipher.version}` : null,
+          subject: cert.subject?.CN ?? null,
+          issuer: cert.issuer?.O ?? cert.issuer?.CN ?? null,
+          altNames: (cert.subjectaltname ?? '').split(', ').filter(Boolean).slice(0, 12),
+          validFrom: cert.valid_from ? new Date(cert.valid_from).toISOString() : null,
+          validTo: validTo.toISOString(),
+          daysLeft: Math.max(0, Math.round((validTo.getTime() - Date.now()) / 86400000)),
+          serialNumber: cert.serialNumber ?? null,
+          fingerprint: cert.fingerprint256 ?? null,
+        });
+      } catch (err) {
+        resolve({ host, port, error: err.message });
+      } finally {
+        socket.destroy();
+      }
+    });
+    socket.on('error', (err) => resolve({ host, port, error: err.message }));
+    socket.on('timeout', () => { socket.destroy(); resolve({ host, port, error: 'TLS 握手超时' }); });
+  });
+  tlsCache = { at: Date.now(), data };
+  return data;
+}
 
 function log(line) {
   const row = `[${new Date().toISOString()}] ${line}`;
@@ -312,9 +480,11 @@ async function restartGateway() {
 // --------------------------------------------------------------- routes ----
 
 async function apiStatus() {
+  const upstreamStarted = Date.now();
   const up = await fetchJson(`${cfg.upstream.replace(/\/+$/, '')}/v1/models`, {
     headers: keyState.key ? { authorization: `Bearer ${keyState.key}` } : {},
   }, 8000).catch((e) => ({ ok: false, status: 0, text: e.message }));
+  up.elapsedMs = Date.now() - upstreamStarted;
 
   const extra = local.status ? await local.status().catch((e) => ({ error: e.message })) : {};
 
@@ -328,12 +498,22 @@ async function apiStatus() {
       pid: process.pid,
       version: process.version,
     },
+    runtime: {
+      user: (() => { try { return os.userInfo().username; } catch { return 'unknown'; } })(),
+      platform: process.platform,
+      arch: process.arch,
+      node: process.version,
+      configPath: CONFIG_FILE,
+      logPath: path.join(DIR, cfg.logFile),
+      dir: DIR,
+    },
     key: { present: !!keyState.key, source: keyState.source, length: keyState.key.length },
     models: { flash: cfg.flashModel, pro: cfg.proModel },
     upstream: {
       base: cfg.upstream,
       ok: !!up.ok,
       models: (up.json?.data ?? []).map((m) => m.id),
+      latencyMs: up.ok ? Math.max(1, Math.round(up.elapsedMs ?? 0)) : null,
       error: up.ok ? undefined : `HTTP ${up.status || '-'} ${String(up.text || '').slice(0, 160)}`,
     },
     localActionsLoaded: fs.existsSync(LOCAL_ACTIONS),
@@ -355,20 +535,43 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || cfg.host}`);
   const route = url.pathname.replace(/^\/v1(?=\/|$)/, '') || '/';
   const started = Date.now();
+  const acceptEncoding = req.headers['accept-encoding'] || '';
   const isGatewayCall = !route.startsWith('/api') && route !== '/' && route !== '/panel' && route !== '/ui' && route !== '/healthz';
   if (isGatewayCall) stats.requests += 1;
 
   if (req.method === 'POST') req.on('error', () => {});
   res.on('finish', () => {
-    if (!route.startsWith('/api') && route !== '/healthz' && route !== '/') {
-      log(`${req.method} ${url.pathname} -> ${res.statusCode} (${Date.now() - started}ms)`);
+    const isStatic = url.pathname.startsWith('/assets') || url.pathname.startsWith('/bg')
+      || url.pathname === '/favicon.svg' || url.pathname === '/apple-touch-icon.png';
+    if (route.startsWith('/api') || isStatic || route === '/' || route === '/panel' || route === '/ui') return;
+    recordMetric(url.pathname, res.statusCode, Date.now() - started);
+    if (res.statusCode >= 400) {
+      metrics.lastError = { at: new Date().toISOString(), status: res.statusCode, path: url.pathname, method: req.method };
     }
+    if (route !== '/healthz') log(`${req.method} ${url.pathname} -> ${res.statusCode} (${Date.now() - started}ms)`);
   });
+
+  // ---- console data ------------------------------------------------------
+  if (req.method === 'GET' && route === '/api/metrics') return sendJson(res, 200, metricsSnapshot());
+  if (req.method === 'GET' && route === '/api/routes') {
+    return sendJson(res, 200, {
+      routes: ROUTE_TABLE,
+      upstreams: [
+        { id: 'openai', label: 'DeepSeek · OpenAI 兼容', base: cfg.upstream, protocol: 'HTTPS' },
+        { id: 'anthropic', label: 'DeepSeek · Anthropic 兼容', base: cfg.anthropicUpstream, protocol: 'HTTPS' },
+        { id: 'local', label: '网关内置', base: `http://${cfg.host}:${cfg.port}`, protocol: 'HTTP' },
+      ],
+    });
+  }
+  if (req.method === 'GET' && route === '/api/tls') {
+    try { return sendJson(res, 200, await tlsInfo()); }
+    catch (err) { return sendJson(res, 500, { ok: false, message: err.message }); }
+  }
 
   // ---- panel + api -------------------------------------------------------
   if (req.method === 'GET' && (route === '/' || route === '/panel' || route === '/ui')) {
     // Built React panel (panel/dist) when it exists, else the single-file fallback.
-    if (serveDist(res, 'index.html')) return;
+    if (serveDist(res, 'index.html', acceptEncoding)) return;
     try {
       const html = fs.readFileSync(PANEL_FILE, 'utf8');
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
@@ -380,7 +583,7 @@ const server = http.createServer(async (req, res) => {
 
   // static assets of the built panel: /assets/*, /favicon.svg, /bg/*
   if (req.method === 'GET' && !route.startsWith('/api') && route !== '/healthz' && route !== '/models') {
-    if (serveDist(res, url.pathname)) return;
+    if (serveDist(res, url.pathname, acceptEncoding)) return;
   }
 
   if (req.method === 'GET' && route === '/api/status') {

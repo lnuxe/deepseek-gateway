@@ -1,0 +1,261 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   设计令牌 — 石墨灰 / 低饱和蓝绿 / 暖白 / 深墨
+   全部以 CSS 变量暴露，Tailwind v4 通过 @theme 映射为工具类
+   ========================================================================== */
+:root {
+  /* 表面与线条 */
+  --c-bg: #0e1114;
+  --c-bg-2: #12161a;
+  --c-surface: #161b20;
+  --c-surface-2: #1b2127;
+  --c-surface-3: #212830;
+  --c-hair: rgba(226, 232, 238, 0.075);
+  --c-hair-2: rgba(226, 232, 238, 0.14);
+  --c-hair-3: rgba(226, 232, 238, 0.24);
+
+  /* 文字：暖白 → 石墨灰 */
+  --c-ink: #e8e4dc;
+  --c-ink-2: #a8adb4;
+  --c-ink-3: #767d85;
+  --c-ink-4: #545b62;
+
+  /* 强调：低饱和蓝绿，少量使用 */
+  --c-accent: #48a394;
+  --c-accent-2: #5f8fa8;
+  --c-accent-soft: rgba(72, 163, 148, 0.14);
+  --c-ok: #58a67f;
+  --c-warn: #c2a05c;
+  --c-err: #c4726f;
+  --c-info: #6f92ac;
+
+  /* 尺寸与节奏 */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 150ms;
+  --t-base: 200ms;
+  --t-slow: 300ms;
+
+  --nav-w: 232px;
+  --nav-w-collapsed: 60px;
+  --top-h: 56px;
+}
+
+@theme {
+  --color-bg: var(--c-bg);
+  --color-bg-2: var(--c-bg-2);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-surface-3: var(--c-surface-3);
+  --color-hair: var(--c-hair);
+  --color-hair-2: var(--c-hair-2);
+  --color-hair-3: var(--c-hair-3);
+  --color-ink: var(--c-ink);
+  --color-ink-2: var(--c-ink-2);
+  --color-ink-3: var(--c-ink-3);
+  --color-ink-4: var(--c-ink-4);
+  --color-accent: var(--c-accent);
+  --color-accent-2: var(--c-accent-2);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-ok: var(--c-ok);
+  --color-warn: var(--c-warn);
+  --color-err: var(--c-err);
+  --color-info: var(--c-info);
+  --font-sans: Inter, "Geist", "Segoe UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  --font-hand: "Segoe Print", "Bradley Hand", "Comic Sans MS", cursive;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================================
+   背景：极细网格 + 纸张噪点 + 低透明度拓扑节点（全部静态/合成层动画）
+   ========================================================================== */
+.bg-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(226, 232, 238, 0.028) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(226, 232, 238, 0.028) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(120% 90% at 50% 0%, #000 30%, rgba(0, 0, 0, 0.35) 70%, transparent 100%);
+}
+
+.bg-noise {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.bg-topology {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.36;
+}
+
+/* 节点呼吸：只动 opacity / transform，走合成层 */
+.node-breathe {
+  transform-origin: center;
+  animation: node-breathe 4.8s var(--ease-out) infinite;
+}
+@keyframes node-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.12);
+  }
+}
+
+/* ============================================================================
+   组件基元
+   ========================================================================== */
+.card {
+  background: linear-gradient(180deg, rgba(226, 232, 238, 0.028), rgba(226, 232, 238, 0.008));
+  border: 1px solid var(--c-hair);
+  border-radius: var(--r-lg);
+  transition: border-color var(--t-base) var(--ease-out), background var(--t-base) var(--ease-out);
+}
+.card:hover {
+  border-color: var(--c-hair-2);
+}
+
+.hair-t {
+  border-top: 1px solid var(--c-hair);
+}
+
+/* 桌面端主区让出侧栏宽度（移动端侧栏是抽屉，不占位） */
+@media (min-width: 1024px) {
+  .pl-nav {
+    padding-left: var(--nav-w);
+  }
+  .pl-nav-rail {
+    padding-left: var(--nav-w-collapsed);
+  }
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--c-accent) 60%, transparent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* 状态呼吸（在线/健康指示） */
+.breathe {
+  animation: breathe 2.6s var(--ease-out) infinite;
+}
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    opacity: 0.75;
+    box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 22%, transparent);
+  }
+}
+
+/* 段落/卡片入场：统一 200ms ease-out，位移极小 */
+.fade-up {
+  animation: fade-up var(--t-slow) var(--ease-out) both;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(226, 232, 238, 0.04), rgba(226, 232, 238, 0.09), rgba(226, 232, 238, 0.04));
+  background-size: 200% 100%;
+  animation: skeleton 1.4s linear infinite;
+  border-radius: var(--r-sm);
+}
+@keyframes skeleton {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(226, 232, 238, 0.11);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(226, 232, 238, 0.2);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 长列表/大块内容跳过离屏渲染 */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 320px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .node-breathe,
+  .breathe {
+    animation: none !important;
+    opacity: 0.6;
+  }
+}

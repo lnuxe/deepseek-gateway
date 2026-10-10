@@ -1,10 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="网关控制台">
+  <title>网关控制台</title>
   <defs>
+    <filter id="r" x="-15%" y="-15%" width="130%" height="130%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="11" result="n" />
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="1.1" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8aa7ff"/>
-      <stop offset="1" stop-color="#b79cff"/>
+      <stop offset="0" stop-color="#48a394" />
+      <stop offset="1" stop-color="#5f8fa8" />
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="18" fill="url(#g)"/>
-  <path d="M22 18h11c8.5 0 14 5.6 14 14s-5.5 14-14 14H22V18zm8 7v14h3c4.2 0 6.7-2.7 6.7-7s-2.5-7-6.7-7h-3z" fill="#070810"/>
+  <!-- 透明背景，深墨/蓝绿单双色，手绘网关节点：外框 + 中心节点 + 三条出口 -->
+  <g filter="url(#r)" fill="none" stroke="url(#g)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12.5 18.2 24 11.6l11.5 6.6v11.6L24 36.4 12.5 29.8Z" />
+    <path d="M24 11.9v6.4M24 29.7v6.4M12.8 18.4l7.3 3.9M28 25.6l7.1 4.1" stroke-width="1.7" />
+    <circle cx="24" cy="24" r="2.9" />
+    <path d="M24 24l5.4-5.2" stroke-width="1.6" />
+  </g>
+  <g fill="#48a394">
+    <circle cx="24" cy="11.6" r="1.8" />
+    <circle cx="36.2" cy="30" r="1.5" />
+    <circle cx="11.8" cy="18.4" r="1.5" />
+  </g>
 </svg>

@@ -46,25 +46,30 @@ API Key  : anything (the gateway injects your real DeepSeek key)
 Model    : deepseek-flash   or   deepseek-v4-pro
 ```
 
-## Control panel
+## Control panel — 网关控制台
 
-A single static page (`panel.html`) served by the gateway, dark and keyboard-free:
-everything you must configure manually is there, everything else is one click.
+The gateway serves a console from `panel/dist`. It is a Vite + React + Tailwind
+app, organised as a console shell with nine sections:
 
-### The guided React panel (default)
+```
+概览 Overview            KPIs, dependency health, throughput, recent requests
+网关路由 Routes           the routes this gateway serves + live per-route counters
+上游服务 Upstreams        upstream health, latency, model catalogue
+消费者 Consumers          which local clients are wired up (Cursor, extensions, SDKs)
+插件 Plugins              the fixed request pipeline, read-only
+证书 Certificates         upstream TLS chain, ciphers, expiry countdown
+日志 Logs                 live request log with filters and export
+监控 Metrics              rpm, P50/P95, error rate, per-route and per-status breakdown
+系统设置 Settings         upstream key, listen port, autostart, client patching, runtime
+```
 
-`panel/` is a Vite + React + Tailwind app that the gateway serves from
-`panel/dist` when it has been built. It replaces the flat settings list with a
-three-step flow that always shows the one thing left to do:
+Shell: collapsible left navigation, top bar with breadcrumb, environment chip,
+`⌘K` section search, status notifications and the local user. Sections are
+reachable as links (`/#/logs`).
 
-1. **填入 DeepSeek API Key** — one input, one button; the step collapses with a
-   check once the key works
-2. **接入 Cursor** — copy the base URL or write it straight into Cursor
-3. **验证** — run the self-test and see each check
-
-Finished steps collapse and can be clicked to peek at / edit their settings.
-Everything technical (port, model mapping, autostart, client patching, live log)
-lives under 高级设置 so the default view stays calm.
+Manually configurable: the upstream key, the listen port, autostart, and the
+local client-patch actions. Everything else is read from the running gateway —
+there is no model-name mapping UI, the gateway does that internally.
 
 ```cmd
 cd panel
@@ -76,24 +81,40 @@ npm run dev          :: hot-reload dev server on :5199 (proxies /api to :8787)
 If `panel/dist` is absent the gateway falls back to the zero-build `panel.html`,
 so the tool keeps working without a Node build chain.
 
-**Background**: a self-rendered seamless loop (`panel/public/bg/aurora.mp4`,
-127 KB) drawn by `tools/render-bg/render.py` — Playwright renders frames from a
-deterministic canvas scene, `ffmpeg-static` encodes them. Everything is original
-artwork; nothing third-party is bundled. A hand-drawn SVG layer (`Doodles`) and
-sketch spot illustrations (key / plug / shield, with a turbulence-displacement
-filter for the pen-drawn wobble) drift over it at low opacity.
+### Look & feel
 
-| Card | What it does |
+Dark graphite console with a low-saturation blue-green accent, warm-white text,
+system font stack. Background is a fine grid, paper noise and a low-opacity
+topology that breathes — pure CSS/SVG, no canvas, no particles, no video.
+
+Hand-drawn artwork is confined to icons, empty states, dividers and the title
+scribble: single-colour thin strokes with a `feTurbulence` + `feDisplacementMap`
+filter for the slight pen wobble (`sk-rough`). Icons are an original SVG set;
+the favicon ships as `favicon.svg` plus transparent 16/32/180 PNG renditions.
+
+Motion is limited to 150–300 ms `ease-out` transitions on tint, border and
+opacity, plus small `fade-up` entrances; everything is disabled under
+`prefers-reduced-motion`.
+
+### Performance
+
+| | |
 | --- | --- |
-| **API Key** | Paste/replace the DeepSeek key, see where it currently comes from, test the connection |
-| **Service** | Port, model mapping (ordinary name / pro name); saved instantly, port change asks for a restart |
-| **Actions** | Run the gateway self-test, test the upstream, register/remove the logon autostart task, restart the gateway |
-| **Request log** | Live tail of `gateway.log`, refresh can be paused |
+| First load | ~67 KB gzip (html + React + shell + CSS), sections load on demand |
+| Per section | 1–3 KB gzip, split into its own chunk (`React.lazy`) |
+| Caching | hashed assets `immutable, max-age=31536000`; `index.html` `no-store` |
+| Transfer | gzip on the fly for JS/CSS/SVG/JSON, cached in memory per file |
+| No | chart library, animation library, web font request, CDN, canvas, video |
+| Polling | visibility-aware, only the active section, 4–10 s intervals |
+| Rendering | transform/opacity-only animations, `content-visibility` for long lists |
 
 Panel API (scriptable):
 
 ```
 GET  /api/status                       machine-readable state
+GET  /api/metrics                      in-process counters, rolling minute series, P50/P95
+GET  /api/routes                       route table + upstream list
+GET  /api/tls                          upstream TLS certificate details (10 min cache)
 GET  /api/log?tail=200                 request log tail
 POST /api/config   {apiKey?, port?, flashModel?, proModel?, upstream?}
 POST /api/action   {name: "probe" | "test-upstream" | "autostart-install" | "autostart-remove" | "restart-gateway"}
