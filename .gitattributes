@@ -1,0 +1,15 @@
+# Normalize line endings so the repo stays consistent across platforms.
+* text=auto
+
+# Windows batch files must keep CRLF to run correctly with cmd.exe
+*.cmd text eol=crlf
+
+# Node sources and docs are LF
+*.mjs text eol=lf
+*.js  text eol=lf
+*.md  text eol=lf
+*.json text eol=lf
+
+# Binary / generated
+*.png binary
+*.jpg binary
