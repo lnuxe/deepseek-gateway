@@ -1,0 +1,18 @@
+# logs — runtime output, may contain request paths and model names
+*.log
+gateway.out.log
+
+# local-only tooling: reads/patch the local editor install, not published
+patch-cursor.mjs
+cursor-state.mjs
+
+# local backups of patched application bundles
+*.orig-*
+*.bak-*
+state.vscdb*
+*.vsix
+
+# misc
+node_modules/
+Thumbs.db
+desktop.ini
