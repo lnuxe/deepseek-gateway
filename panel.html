@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DeepSeek 网关 · 控制面板</title>
+<style>
+  :root{
+    --bg:#0d0d0f; --card:#16161a; --card-2:#1c1c21; --line:#2a2a31;
+    --fg:#e8e8ea; --fg-dim:#9a9aa4; --fg-dim2:#6e6e78;
+    --ok:#3ecf8e; --warn:#e2b341; --err:#ef5b5b; --accent:#6f9cf5; --accent-2:#8b7bf0;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:940px; margin:0 auto; padding:28px 20px 60px}
+  header{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px}
+  h1{font-size:19px; margin:0; letter-spacing:.2px}
+  header .sub{color:var(--fg-dim2); font-size:12.5px}
+  .pills{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 22px}
+  .pill{
+    display:inline-flex; align-items:center; gap:7px; padding:5px 11px;
+    background:var(--card); border:1px solid var(--line); border-radius:999px;
+    font-size:12.5px; color:var(--fg-dim);
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--fg-dim2);flex:0 0 auto}
+  .dot.ok{background:var(--ok)} .dot.err{background:var(--err)} .dot.warn{background:var(--warn)}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px; margin-bottom:14px;
+  }
+  .card h2{
+    margin:0 0 4px; font-size:13.5px; font-weight:600; letter-spacing:.3px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .card .desc{color:var(--fg-dim2); font-size:12.5px; margin:0 0 14px}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px}
+  .row:last-child{margin-bottom:0}
+  label.fld{display:block; font-size:12px; color:var(--fg-dim); margin-bottom:5px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px}
+  input,select{
+    width:100%; background:var(--card-2); color:var(--fg); border:1px solid var(--line);
+    border-radius:9px; padding:9px 11px; font:13px/1.4 inherit; outline:none;
+  }
+  input:focus{border-color:var(--accent)}
+  input[type=password]{letter-spacing:1px}
+  button{
+    background:var(--card-2); color:var(--fg); border:1px solid var(--line);
+    border-radius:9px; padding:9px 15px; font:13px/1 inherit; cursor:pointer;
+    transition:background .12s,border-color .12s,transform .05s;
+  }
+  button:hover{background:#22222a; border-color:#3a3a44}
+  button:active{transform:translateY(1px)}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#0b1020; font-weight:600}
+  button.primary:hover{background:#7ea8f7}
+  button.danger{border-color:#4a2b2b; color:#f0a0a0}
+  button.danger:hover{background:#2a1b1b}
+  button:disabled{opacity:.5; cursor:not-allowed}
+  .hint{font-size:12px; color:var(--fg-dim2); margin-top:8px}
+  .kbd{font:12px ui-monospace,Consolas,monospace; background:#0000; border:1px solid var(--line); border-radius:5px; padding:1px 6px; color:var(--fg-dim)}
+  .stat{display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px}
+  .stat:last-child{border-bottom:none}
+  .stat .k{color:var(--fg-dim)}
+  .stat .v{color:var(--fg); text-align:right; word-break:break-all; font-variant-numeric:tabular-nums}
+  pre.log{
+    margin:0; background:#0b0b0d; border:1px solid var(--line); border-radius:9px;
+    padding:12px; max-height:300px; overflow:auto; white-space:pre-wrap;
+    font:12px/1.5 ui-monospace,Consolas,monospace; color:#c9c9d1;
+  }
+  .checks{display:flex; flex-direction:column; gap:6px}
+  .check{display:flex; align-items:center; gap:9px; font-size:13px}
+  .check .badge{width:16px; text-align:center}
+  .checks-ok{color:var(--ok)} .checks-err{color:var(--err)}
+  #toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:var(--card-2); border:1px solid var(--line); border-radius:10px;
+    padding:11px 16px; font-size:13px; max-width:min(680px,90vw);
+    opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; z-index:9;
+  }
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  #toast.ok{border-color:#245c42} #toast.err{border-color:#5c2b2b}
+  .split{display:flex; gap:8px; flex-wrap:wrap}
+  .muted{color:var(--fg-dim2)}
+  code{font:12px ui-monospace,Consolas,monospace; color:#cfd3ff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>DeepSeek 网关</h1>
+    <span class="sub">本机模型出口 · Cursor 与任何 OpenAI 兼容客户端</span>
+  </header>
+  <div class="pills" id="pills"><span class="pill"><span class="dot"></span>读取状态…</span></div>
+
+  <div class="card">
+    <h2>API Key</h2>
+    <p class="desc">DeepSeek 的 key。留空则自动用环境变量 <code>GW_API_KEY</code> 或 dsh 已保存的 key。</p>
+    <div class="grid">
+      <div>
+        <label class="fld">DeepSeek API Key</label>
+        <input id="apiKey" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" />
+      </div>
+      <div>
+        <label class="fld">当前来源</label>
+        <input id="keySource" type="text" readonly />
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" data-save-key>保存</button>
+      <button data-act="test-upstream">测试连接</button>
+      <button data-read-dsh>改用 dsh 里的 key</button>
+      <span class="hint">key 只写入本机 <span class="kbd">config.json</span>，不进 git。</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>服务</h2>
+    <p class="desc">客户端把这个地址填进「Override OpenAI Base URL」；模型名随便填，网关会映射。</p>
+    <div class="grid">
+      <div><label class="fld">监听端口</label><input id="port" type="number" min="1" max="65535" /></div>
+      <div><label class="fld">普通模型名 → 实际模型</label><input id="flashModel" type="text" /></div>
+      <div><label class="fld">pro / reasoner 名 → 实际模型</label><input id="proModel" type="text" /></div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" data-save-svc>保存</button>
+      <button data-act="restart-gateway">重启网关</button>
+      <button data-act="autostart-install">注册开机自启</button>
+      <button data-act="autostart-remove">取消开机自启</button>
+    </div>
+  </div>
+
+  <div class="card" id="cursorCard" hidden>
+    <h2>Cursor 集成</h2>
+    <p class="desc">把上面这个 Base URL 写进 Cursor，让它的模型出口指向本网关。写入前需要先完全退出 Cursor。</p>
+    <div id="cursorStats"></div>
+    <div class="row" style="margin-top:12px" id="cursorActions"></div>
+  </div>
+
+  <div class="card" id="patchCard" hidden>
+    <h2>本机客户端补丁 <span class="muted" style="font-weight:400;font-size:12px">仅本地</span></h2>
+    <p class="desc">这些动作会修改本机安装的编辑器文件，只在装了 <code>local-actions.mjs</code> 时出现，不会上传到仓库。</p>
+    <div id="patchStats"></div>
+    <div class="row" style="margin-top:12px" id="patchActions"></div>
+  </div>
+
+  <div class="card">
+    <h2>动作</h2>
+    <p class="desc">一键完成剩下的活。</p>
+    <div class="split" id="coreActions"></div>
+    <div id="probeResult" style="margin-top:14px"></div>
+  </div>
+
+  <div class="card">
+    <h2>请求日志
+      <button style="margin-left:auto;font-size:12px;padding:5px 10px" id="logToggle">暂停刷新</button>
+    </h2>
+    <p class="desc" id="logPath">最近 60 条</p>
+    <pre class="log" id="log">加载中…</pre>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+let status = null;
+let logPaused = false;
+
+function toast(msg, kind) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'show ' + (kind || '');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => { t.className = ''; }, kind === 'err' ? 6000 : 3500);
+}
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  const text = await r.text();
+  let json; try { json = JSON.parse(text); } catch { json = { raw: text }; }
+  if (!r.ok && json.ok === undefined) json.ok = false;
+  return json;
+}
+
+function pill(label, state, extra) {
+  const cls = state === true ? 'ok' : state === false ? 'err' : 'warn';
+  return `<span class="pill"><span class="dot ${cls}"></span>${label}${extra ? ' · ' + extra : ''}</span>`;
+}
+
+function renderStatus(s) {
+  status = s;
+  const g = s.gateway, k = s.key, up = s.upstream;
+  $('#pills').innerHTML = [
+    pill('网关运行中', true, `:${g.port} · ${g.requests} 请求 · ${Math.round(g.uptimeSec / 60)} 分钟`),
+    pill('DeepSeek 连接', !!up.ok, up.ok ? `${up.models.length} 个模型` : '失败'),
+    pill('API Key', !!k.present, k.present ? k.source : '未配置'),
+    s.cursor ? pill('Cursor', !!s.cursor.installed, s.cursor.version || '') : '',
+  ].join('');
+
+  $('#keySource').value = (k.present ? `${k.source}（${k.length} 字符）` : '未配置');
+  if (document.activeElement !== $('#apiKey')) $('#apiKey').placeholder = k.present ? '已保存 · 输入新值可覆盖' : 'sk-…';
+  if (document.activeElement !== $('#port')) $('#port').value = g.port;
+  if (document.activeElement !== $('#flashModel')) $('#flashModel').value = s.models.flash;
+  if (document.activeElement !== $('#proModel')) $('#proModel').value = s.models.pro;
+
+  const core = s.actions.filter((a) => !a.local && a.name !== 'test-upstream');
+  $('#coreActions').innerHTML = core.map((a) =>
+    `<button data-act="${a.name}" class="${a.danger ? 'danger' : ''}">${a.label}</button>`).join('');
+
+  const localActs = s.actions.filter((a) => a.local);
+  if (s.cursor) {
+    $('#cursorCard').hidden = false;
+    const c = s.cursor;
+    $('#cursorStats').innerHTML = [
+      ['安装位置', c.exePath || '—'],
+      ['版本', c.version || '—'],
+      ['运行中', c.running ? '是' : '否'],
+      ['已写入的 Base URL', c.baseUrl || '未写入'],
+      ['客户端补丁', c.patched === undefined ? '—' : (c.patched ? '已应用' : '未应用')],
+    ].map(([k2, v]) => `<div class="stat"><span class="k">${k2}</span><span class="v">${v}</span></div>`).join('');
+  }
+  if (s.localActionsLoaded && localActs.length) {
+    $('#patchCard').hidden = false;
+    const patchActs = localActs.filter((a) => /patch/.test(a.name));
+    const other = localActs.filter((a) => !/patch/.test(a.name));
+    $('#patchActions').innerHTML = [...patchActs, ...other].map((a) =>
+      `<button data-act="${a.name}" class="${a.danger ? 'danger' : ''}">${a.label}</button>`).join('');
+    $('#patchStats').innerHTML = s.cursor && s.cursor.patched !== undefined
+      ? `<div class="stat"><span class="k">补丁状态</span><span class="v">${s.cursor.patched ? '已应用' : '未应用'}</span></div>` : '';
+  }
+}
+
+async function loadStatus() {
+  try { renderStatus(await api('/api/status')); }
+  catch (e) { $('#pills').innerHTML = pill('无法连接网关', false, e.message); }
+}
+
+async function loadLog() {
+  if (logPaused) return;
+  try {
+    const r = await api('/api/log?tail=60');
+    const el = $('#log');
+    el.textContent = r.tail || '（还没有请求）';
+    el.scrollTop = el.scrollHeight;
+  } catch { /* ignore */ }
+}
+
+async function runAction(name, btn) {
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api('/api/action', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (r.checks) {
+      $('#probeResult').innerHTML = '<div class="checks">' + r.checks.map((c) =>
+        `<div class="check ${c.ok ? 'checks-ok' : 'checks-err'}"><span class="badge">${c.ok ? '✓' : '✗'}</span>${c.name}<span class="muted">${c.detail || ''}</span></div>`).join('') + '</div>';
+    }
+    toast((r.ok ? '✓ ' : '✗ ') + (r.message || name), r.ok ? 'ok' : 'err');
+  } catch (e) {
+    toast('✗ ' + e.message, 'err');
+  } finally {
+    if (btn) btn.disabled = false;
+    loadStatus(); loadLog();
+  }
+}
+
+document.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button');
+  if (!btn) return;
+  const act = btn.dataset.act;
+  if (act) {
+    if (btn.dataset.confirmed !== '1' && /restart|patch|revert|remove/.test(act)) {
+      btn.dataset.confirmed = '1';
+      const orig = btn.textContent;
+      btn.textContent = '再点一次确认：' + orig;
+      setTimeout(() => { btn.dataset.confirmed = '0'; btn.textContent = orig; }, 4000);
+      return;
+    }
+    return runAction(act, btn);
+  }
+  if (btn.hasAttribute('data-save-key')) {
+    return api('/api/config', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ apiKey: $('#apiKey').value.trim() }),
+    }).then((r) => { toast((r.ok ? '✓ ' : '✗ ') + (r.message || ''), r.ok ? 'ok' : 'err'); $('#apiKey').value = ''; loadStatus(); });
+  }
+  if (btn.hasAttribute('data-save-svc')) {
+    return api('/api/config', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ port: Number($('#port').value), flashModel: $('#flashModel').value.trim(), proModel: $('#proModel').value.trim() }),
+    }).then((r) => { toast((r.ok ? '✓ ' : '✗ ') + (r.message || ''), r.ok ? 'ok' : 'err'); loadStatus(); });
+  }
+  if (btn.hasAttribute('data-read-dsh')) {
+    const key = (status && status.key && status.key.source.includes('credentials.yaml'));
+    return key
+      ? api('/api/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ apiKey: '' }) })
+          .then((r) => { toast('✓ 已切回从 dsh 读取', 'ok'); loadStatus(); })
+      : toast('当前 key 不是来自 dsh，config.json 里没有内容可清', 'err');
+  }
+});
+
+$('#logToggle').addEventListener('click', (e) => {
+  logPaused = !logPaused;
+  e.target.textContent = logPaused ? '继续刷新' : '暂停刷新';
+  if (!logPaused) loadLog();
+});
+
+loadStatus(); loadLog();
+setInterval(loadStatus, 5000);
+setInterval(loadLog, 3000);
+</script>
+</body>
+</html>

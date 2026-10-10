@@ -1,14 +1,15 @@
 # deepseek-gateway
 
 A tiny local HTTP gateway that exposes your **DeepSeek** API as an
-**OpenAI-compatible** (and **Anthropic-compatible**) endpoint, so any client that
-speaks those protocols can use DeepSeek models.
+**OpenAI-compatible** (and **Anthropic-compatible**) endpoint, plus a small
+control panel — so any client that speaks those protocols can use DeepSeek models.
 
 Zero dependencies — Node.js built-in modules only.
 
 ```
 your client ──► http://127.0.0.1:8787/v1 ──► https://api.deepseek.com
                 (this gateway)
+control panel ─► http://127.0.0.1:8787/
 ```
 
 ## Why it exists
@@ -37,7 +38,7 @@ start-gateway.cmd
 node server.mjs
 ```
 
-Then point your client at:
+Open **http://127.0.0.1:8787/** for the control panel, then point your client at:
 
 ```
 Base URL : http://127.0.0.1:8787/v1
@@ -45,43 +46,76 @@ API Key  : anything (the gateway injects your real DeepSeek key)
 Model    : deepseek-flash   or   deepseek-v4-pro
 ```
 
-Self-test (models list, probe request, unknown model names, streaming, tool calls):
+## Control panel
 
-```cmd
-node server.mjs --probe
+A single static page (`panel.html`) served by the gateway, dark and keyboard-free:
+everything you must configure manually is there, everything else is one click.
+
+| Card | What it does |
+| --- | --- |
+| **API Key** | Paste/replace the DeepSeek key, see where it currently comes from, test the connection |
+| **Service** | Port, model mapping (ordinary name / pro name); saved instantly, port change asks for a restart |
+| **Actions** | Run the gateway self-test, test the upstream, register/remove the logon autostart task, restart the gateway |
+| **Request log** | Live tail of `gateway.log`, refresh can be paused |
+
+Panel API (scriptable):
+
+```
+GET  /api/status                       machine-readable state
+GET  /api/log?tail=200                 request log tail
+POST /api/config   {apiKey?, port?, flashModel?, proModel?, upstream?}
+POST /api/action   {name: "probe" | "test-upstream" | "autostart-install" | "autostart-remove" | "restart-gateway"}
 ```
 
-Liveness and config:
+### Optional local extension
 
-```cmd
-curl http://127.0.0.1:8787/healthz
+If a file named `local-actions.mjs` exists next to `server.mjs`, the panel loads
+it and adds whatever it exports — extra status fields and extra action buttons
+(for example editor-integration helpers that only make sense on that machine):
+
+```js
+export const actions = {
+  'my-action': { label: 'Do the thing', confirm: true, danger: false, run: async (body) => ({ ok: true, message: 'done' }) },
+};
+export async function status() { return { cursor: { /* extra fields for the panel */ } }; }
 ```
+
+`local-actions.mjs` is git-ignored on purpose: keep machine-specific tooling out
+of the published repo.
 
 ## Endpoints
 
 | Method | Path | Behaviour |
 | --- | --- | --- |
+| `GET` | `/` | Control panel (HTML) |
+| `GET` | `/api/status`, `/api/log` | Panel data |
+| `POST` | `/api/config`, `/api/action` | Panel writes |
 | `GET` | `/v1/models` | OpenAI-shaped model list (`deepseek-flash`, `deepseek-v4-pro`) |
 | `POST` | `/v1/chat/completions` | Forwarded to DeepSeek, streaming and tool calls supported |
 | `POST` | `/v1/messages` | Anthropic format → `https://api.deepseek.com/anthropic/v1/messages` |
 | `POST` | `/v1/embeddings`, `/v1/completions` | Passthrough |
 | `GET` | `/healthz` | Liveness, upstream, resolved key source |
 
-Paths also work without the `/v1` prefix. Every request is appended to
-`gateway.log` as `METHOD /path -> status (ms)`.
+Paths also work without the `/v1` prefix. Every client request is appended to
+`gateway.log` as `METHOD /path -> status (ms)` (panel/API calls are not logged).
 
-## Configuration (all optional, environment variables)
+## Configuration
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `GW_PORT` | `8787` | Listen port |
-| `GW_HOST` | `127.0.0.1` | Listen address (loopback only by default) |
-| `GW_API_KEY` | — | DeepSeek key; else read from `~/.dsh/.credentials.yaml` |
-| `GW_UPSTREAM` | `https://api.deepseek.com` | OpenAI-format upstream |
-| `GW_ANTHROPIC` | `https://api.deepseek.com/anthropic` | Anthropic-format upstream |
-| `GW_MODEL_FLASH` | `deepseek-flash` | Model used for ordinary names |
-| `GW_MODEL_PRO` | `deepseek-v4-pro` | Model used for pro/reasoner-ish names |
-| `GW_LOG` | `gateway.log` | Log file path |
+Settings live in `config.json` next to `server.mjs` (written by the panel, git-ignored).
+Environment variables override the file:
+
+| Variable | config.json key | Default | Meaning |
+| --- | --- | --- | --- |
+| `GW_PORT` | `port` | `8787` | Listen port |
+| `GW_HOST` | `host` | `127.0.0.1` | Listen address (loopback by default) |
+| `GW_API_KEY` | `apiKey` | — | DeepSeek key; else read from `~/.dsh/.credentials.yaml` |
+| `GW_UPSTREAM` | `upstream` | `https://api.deepseek.com` | OpenAI-format upstream |
+| `GW_ANTHROPIC` | `anthropicUpstream` | `https://api.deepseek.com/anthropic` | Anthropic-format upstream |
+| `GW_MODEL_FLASH` | `flashModel` | `deepseek-flash` | Model used for ordinary names |
+| `GW_MODEL_PRO` | `proModel` | `deepseek-v4-pro` | Model used for pro/reasoner-ish names |
+| `GW_LOG` | `logFile` | `gateway.log` | Log file name |
+
+Key resolution order: `config.json` → `GW_API_KEY` → `~/.dsh/.credentials.yaml`.
 
 ### Model name mapping
 
@@ -93,6 +127,15 @@ Paths also work without the `/v1` prefix. Every request is appended to
 Request bodies are filtered against a whitelist (`messages`, `stream`,
 `stream_options`, `tools`, `tool_choice`, `temperature`, `max_tokens`, …) so
 unknown client-side fields never cause an upstream `400`.
+
+### Self-test
+
+```cmd
+node server.mjs --probe
+```
+
+Checks the model list, three arbitrary model names, SSE streaming and tool calls
+against the running instance. The panel runs the same checks from the **Actions** card.
 
 ## Client configuration
 
@@ -111,13 +154,14 @@ substitutes the real one.
 
 ## Security notes
 
-- The gateway **never** stores or embeds your API key — it reads it from
-  `GW_API_KEY` or from `~/.dsh/.credentials.yaml` at startup. Nothing in this
-  repository contains a credential.
+- The gateway **never** ships a credential. The key comes from `config.json`
+  (git-ignored), `GW_API_KEY`, or `~/.dsh/.credentials.yaml`, and the startup log
+  only prints whether a key is present plus its length.
 - It binds to `127.0.0.1` by default, so it is not reachable from the network.
   Change `GW_HOST` only if you understand the consequences.
-- Logs contain request paths, model names and status codes — no prompts, no
-  keys. Rotate or delete `gateway.log` freely.
+- The panel writes only `config.json` and runs the actions listed above; both are
+  loopback-only. Logs contain request paths, model names and status codes — no
+  prompts, no keys.
 - If a client sends an `Authorization` header, it is ignored and replaced with
   your real key upstream.
 

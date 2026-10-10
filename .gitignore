@@ -5,6 +5,10 @@ gateway.out.log
 # local-only tooling: reads/patch the local editor install, not published
 patch-cursor.mjs
 cursor-state.mjs
+local-actions.mjs
+
+# local runtime state (holds your API key)
+config.json
 
 # local backups of patched application bundles
 *.orig-*
