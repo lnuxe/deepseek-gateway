@@ -23,3 +23,7 @@ state.vscdb*
 node_modules/
 Thumbs.db
 desktop.ini
+
+# panel build output + renderer scratch (both reproducible: npm run build / python render.py)
+panel/dist/
+tools/render-bg/.frames/

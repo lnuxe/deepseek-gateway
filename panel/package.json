@@ -1,0 +1,27 @@
+{
+  "name": "deepseek-gateway-panel",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Control panel UI for deepseek-gateway (Vite + React + Tailwind). Built output is served by server.mjs from panel/dist.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lucide-react": "^0.469.0",
+    "motion": "^11.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11"
+  }
+}

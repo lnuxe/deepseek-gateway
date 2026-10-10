@@ -39,7 +39,47 @@ import { fileURLToPath } from 'node:url';
 const DIR = path.dirname(fileURLToPath(import.meta.url));
 const CONFIG_FILE = path.join(DIR, 'config.json');
 const PANEL_FILE = path.join(DIR, 'panel.html');
+const PANEL_DIST = path.join(DIR, 'panel', 'dist');
 const LOCAL_ACTIONS = path.join(DIR, 'local-actions.mjs');
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.woff2': 'font/woff2',
+  '.ico': 'image/x-icon',
+};
+
+/** Serve a file out of panel/dist (the built React panel). Returns false if absent. */
+function serveDist(res, relPath) {
+  const clean = decodeURIComponent(relPath).replace(/^\/+/, '');
+  const file = path.join(PANEL_DIST, clean || 'index.html');
+  if (!file.startsWith(PANEL_DIST)) return false;
+  let stat;
+  try {
+    stat = fs.statSync(file);
+  } catch {
+    return false;
+  }
+  if (!stat.isFile()) return false;
+  const ext = path.extname(file).toLowerCase();
+  res.writeHead(200, {
+    'content-type': MIME[ext] || 'application/octet-stream',
+    'content-length': stat.size,
+    'cache-control': ext === '.html' ? 'no-store' : 'public, max-age=3600',
+  });
+  fs.createReadStream(file).pipe(res);
+  return true;
+}
 
 const DEFAULTS = {
   host: '127.0.0.1',
@@ -327,6 +367,8 @@ const server = http.createServer(async (req, res) => {
 
   // ---- panel + api -------------------------------------------------------
   if (req.method === 'GET' && (route === '/' || route === '/panel' || route === '/ui')) {
+    // Built React panel (panel/dist) when it exists, else the single-file fallback.
+    if (serveDist(res, 'index.html')) return;
     try {
       const html = fs.readFileSync(PANEL_FILE, 'utf8');
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
@@ -334,6 +376,11 @@ const server = http.createServer(async (req, res) => {
     } catch {
       return sendJson(res, 500, { error: 'panel.html missing' });
     }
+  }
+
+  // static assets of the built panel: /assets/*, /favicon.svg, /bg/*
+  if (req.method === 'GET' && !route.startsWith('/api') && route !== '/healthz' && route !== '/models') {
+    if (serveDist(res, url.pathname)) return;
   }
 
   if (req.method === 'GET' && route === '/api/status') {

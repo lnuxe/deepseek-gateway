@@ -1,0 +1,12 @@
+{
+  "name": "deepseek-gateway-render-bg",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Offline renderer for the panel's background loop (used at asset-build time only, not at runtime).",
+  "scripts": {
+    "render": "python render.py"
+  },
+  "devDependencies": {
+    "ffmpeg-static": "^5.2.0"
+  }
+}

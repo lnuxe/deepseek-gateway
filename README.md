@@ -51,6 +51,38 @@ Model    : deepseek-flash   or   deepseek-v4-pro
 A single static page (`panel.html`) served by the gateway, dark and keyboard-free:
 everything you must configure manually is there, everything else is one click.
 
+### The guided React panel (default)
+
+`panel/` is a Vite + React + Tailwind app that the gateway serves from
+`panel/dist` when it has been built. It replaces the flat settings list with a
+three-step flow that always shows the one thing left to do:
+
+1. **填入 DeepSeek API Key** — one input, one button; the step collapses with a
+   check once the key works
+2. **接入 Cursor** — copy the base URL or write it straight into Cursor
+3. **验证** — run the self-test and see each check
+
+Finished steps collapse and can be clicked to peek at / edit their settings.
+Everything technical (port, model mapping, autostart, client patching, live log)
+lives under 高级设置 so the default view stays calm.
+
+```cmd
+cd panel
+npm install
+npm run build        :: -> panel/dist, which server.mjs serves at /
+npm run dev          :: hot-reload dev server on :5199 (proxies /api to :8787)
+```
+
+If `panel/dist` is absent the gateway falls back to the zero-build `panel.html`,
+so the tool keeps working without a Node build chain.
+
+**Background**: a self-rendered seamless loop (`panel/public/bg/aurora.mp4`,
+127 KB) drawn by `tools/render-bg/render.py` — Playwright renders frames from a
+deterministic canvas scene, `ffmpeg-static` encodes them. Everything is original
+artwork; nothing third-party is bundled. A hand-drawn SVG layer (`Doodles`) and
+sketch spot illustrations (key / plug / shield, with a turbulence-displacement
+filter for the pen-drawn wobble) drift over it at low opacity.
+
 | Card | What it does |
 | --- | --- |
 | **API Key** | Paste/replace the DeepSeek key, see where it currently comes from, test the connection |

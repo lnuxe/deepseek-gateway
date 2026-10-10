@@ -4,384 +4,337 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark" />
-<title>DeepSeek 网关 · 控制面板</title>
+<title>DeepSeek 网关</title>
 <style>
-  /* ---------- tokens ---------- */
   :root{
-    --bg:#08080a;
-    --bg-2:#0c0c10;
-    --surface:rgba(20,20,25,.72);
-    --surface-2:rgba(28,28,35,.6);
-    --surface-3:rgba(38,38,48,.55);
-    --line:rgba(255,255,255,.075);
-    --line-strong:rgba(255,255,255,.14);
-    --fg:#eceef2; --fg-2:#a2a6b3; --fg-3:#6d717d;
-    --ok:#46d39a; --warn:#e8bd54; --err:#f2606a;
-    --accent:#7aa2f7; --accent-2:#a78bfa; --accent-3:#46d39a;
-    --ring:rgba(122,162,247,.35);
-    --r-lg:16px; --r-md:11px; --r-sm:8px;
-    --shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 18px 40px -22px rgba(0,0,0,.85);
+    --ink:#eef0f6; --ink-2:#9aa1b2; --ink-3:#616879;
+    --bg:#06070b;
+    --glass:rgba(255,255,255,.028);
+    --glass-2:rgba(255,255,255,.055);
+    --line:rgba(255,255,255,.085);
+    --line-2:rgba(255,255,255,.16);
+    --ok:#5fd8a4; --warn:#e8bd54; --err:#f4747c;
+    --accent:#8aa7ff; --accent-2:#b79cff;
+    --r:18px;
   }
   *{box-sizing:border-box}
-  html,body{height:100%}
   body{
-    margin:0; background:var(--bg); color:var(--fg);
-    font:14px/1.6 "Inter","Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
-    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-    font-variant-numeric:tabular-nums;
+    margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+    font:14px/1.65 "Inter","Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
   }
-
-  /* ---------- ambient background (dot grid + glow) ---------- */
-  .bg{position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none}
-  .bg::before{
-    content:""; position:absolute; inset:-2px;
-    background-image:radial-gradient(rgba(255,255,255,.055) 1px, transparent 1px);
-    background-size:22px 22px;
-    mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 78%);
-    -webkit-mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 78%);
-  }
-  .bg::after{
-    content:""; position:absolute; width:900px; height:520px; left:50%; top:-260px; transform:translateX(-50%);
+  canvas#aurora{position:fixed; inset:0; width:100%; height:100%; z-index:0; display:block}
+  .veil{
+    position:fixed; inset:0; z-index:1; pointer-events:none;
     background:
-      radial-gradient(closest-side, rgba(122,162,247,.20), transparent 70%),
-      radial-gradient(closest-side at 70% 40%, rgba(167,139,250,.16), transparent 70%);
-    filter:blur(10px);
+      radial-gradient(120% 80% at 50% -10%, transparent 40%, rgba(0,0,0,.55) 100%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+    mix-blend-mode:soft-light; opacity:.5;
   }
 
-  .wrap{max-width:1060px; margin:0 auto; padding:26px 20px 72px}
+  .shell{position:relative; z-index:2; max-width:720px; margin:0 auto; padding:64px 22px 96px}
 
-  /* ---------- sticky top bar ---------- */
-  .topbar{
-    position:sticky; top:0; z-index:5; margin:0 -20px 22px; padding:14px 20px 12px;
-    background:linear-gradient(to bottom, rgba(8,8,10,.92) 60%, rgba(8,8,10,.55) 85%, transparent);
-    backdrop-filter:blur(14px);
-  }
-  .brandline{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  /* ---------- hero ---------- */
+  .hero{text-align:center; margin-bottom:40px}
   .mark{
-    width:30px; height:30px; border-radius:9px; flex:0 0 auto;
-    background:linear-gradient(140deg,var(--accent),var(--accent-2));
-    display:grid; place-items:center; color:#0a0a0f; font-weight:800; font-size:15px;
-    box-shadow:0 8px 22px -10px rgba(122,162,247,.85);
+    width:46px; height:46px; margin:0 auto 18px; border-radius:14px;
+    background:linear-gradient(150deg,var(--accent),var(--accent-2));
+    display:grid; place-items:center; font-weight:800; font-size:20px; color:#080910;
+    box-shadow:0 18px 50px -18px rgba(138,167,255,.75);
   }
-  h1{font-size:16px; margin:0; letter-spacing:.2px; font-weight:650}
-  .sub{color:var(--fg-3); font-size:12.5px}
-  .urlchip{
-    margin-left:auto; display:inline-flex; align-items:center; gap:8px;
-    background:var(--surface-2); border:1px solid var(--line); border-radius:999px;
-    padding:5px 7px 5px 12px; font:12.5px/1 ui-monospace,Consolas,monospace; color:var(--fg-2);
+  h1{margin:0 0 8px; font-size:22px; font-weight:650; letter-spacing:.2px}
+  .lede{margin:0; color:var(--ink-2); font-size:13.5px}
+  .statusline{
+    margin-top:20px; display:inline-flex; gap:16px; flex-wrap:wrap; justify-content:center;
+    font-size:12.5px; color:var(--ink-3);
   }
-  .urlchip b{color:var(--fg); font-weight:600}
-  .copy{
-    background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--fg-2);
-    border-radius:999px; padding:4px 9px; font-size:11.5px; cursor:pointer; transition:.15s;
-  }
-  .copy:hover{background:rgba(255,255,255,.12); color:var(--fg)}
-  .copy.done{background:rgba(70,211,154,.16); border-color:rgba(70,211,154,.4); color:var(--ok)}
+  .statusline span{display:inline-flex; align-items:center; gap:7px}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--ink-3);flex:0 0 auto}
+  .dot.ok{background:var(--ok); box-shadow:0 0 0 4px rgba(95,216,164,.14)}
+  .dot.err{background:var(--err)} .dot.warn{background:var(--warn)}
 
-  .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
-  .chip{
-    display:inline-flex; align-items:center; gap:8px; padding:5px 12px 5px 10px;
-    background:var(--surface); border:1px solid var(--line); border-radius:999px;
-    font-size:12.5px; color:var(--fg-2); backdrop-filter:blur(8px); white-space:nowrap;
+  /* ---------- steps ---------- */
+  .steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:14px}
+  .step{
+    border:1px solid var(--line); border-radius:var(--r); background:var(--glass);
+    backdrop-filter:blur(16px); overflow:hidden;
+    transition:border-color .3s, background .3s, opacity .3s, box-shadow .45s;
   }
-  .chip b{color:var(--fg); font-weight:600}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--fg-3);position:relative;flex:0 0 auto}
-  .dot.ok{background:var(--ok)} .dot.err{background:var(--err)} .dot.warn{background:var(--warn)}
-  .dot.ok::after,.dot.err::after,.dot.warn::after{
-    content:""; position:absolute; inset:-4px; border-radius:50%;
-    border:1px solid currentColor; opacity:.55; animation:ring 2.4s ease-out infinite;
+  .step[data-state="todo"]{opacity:.5}
+  .step[data-state="current"]{
+    opacity:1; border-color:rgba(138,167,255,.45); background:var(--glass-2);
+    box-shadow:0 0 0 1px rgba(138,167,255,.12), 0 30px 70px -40px rgba(138,167,255,.85);
   }
-  .dot.ok{color:var(--ok)} .dot.err{color:var(--err)} .dot.warn{color:var(--warn)}
-  @keyframes ring{0%{transform:scale(.6);opacity:.6}70%{transform:scale(1.5);opacity:0}100%{opacity:0}}
+  .step[data-state="done"]{opacity:.72}
+  .head{display:flex; align-items:center; gap:14px; padding:17px 20px; cursor:default}
+  .num{
+    width:26px; height:26px; border-radius:50%; flex:0 0 auto;
+    display:grid; place-items:center; font-size:12.5px; font-weight:650;
+    border:1px solid var(--line-2); color:var(--ink-2); transition:.3s;
+  }
+  .step[data-state="current"] .num{background:linear-gradient(150deg,var(--accent),var(--accent-2)); color:#080910; border-color:transparent}
+  .step[data-state="done"] .num{background:rgba(95,216,164,.16); border-color:rgba(95,216,164,.4); color:var(--ok)}
+  .title{flex:1; min-width:0}
+  .title b{display:block; font-weight:600; font-size:14.5px}
+  .title span{display:block; color:var(--ink-3); font-size:12.5px; margin-top:2px}
+  .tag{font-size:11.5px; color:var(--ink-3); white-space:nowrap}
+  .step[data-state="done"] .tag{color:var(--ok)}
+  .body{padding:0 20px 20px; display:flex; flex-direction:column; gap:13px}
+  .step[data-state="done"] .body, .step[data-state="todo"] .body{display:none}
+  .step[data-state="done"].peek .body{display:flex}
 
-  /* ---------- bento grid ---------- */
-  .bento{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px}
-  @media (max-width:860px){ .bento{grid-template-columns:1fr} .urlchip{margin-left:0} }
-
-  .card{
-    position:relative; overflow:hidden;
-    background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
-    padding:18px 18px 17px; box-shadow:var(--shadow); backdrop-filter:blur(12px);
-    transition:border-color .25s, transform .25s;
-  }
-  .card::before{ /* cursor spotlight */
-    content:""; position:absolute; inset:0; opacity:0; transition:opacity .3s; pointer-events:none;
-    background:radial-gradient(220px circle at var(--mx,50%) var(--my,0%), rgba(122,162,247,.10), transparent 65%);
-  }
-  .card:hover::before{opacity:1}
-  .card:hover{border-color:var(--line-strong)}
-  .span2{grid-column:1 / -1}
-  @media (max-width:860px){ .span2{grid-column:auto} }
-
-  .card h2{
-    margin:0 0 3px; font-size:13px; font-weight:650; letter-spacing:.3px;
-    display:flex; align-items:center; gap:9px;
-  }
-  .card h2 .ico{color:var(--accent); font-size:14px; line-height:1}
-  .card .desc{color:var(--fg-3); font-size:12.5px; margin:0 0 15px; max-width:70ch}
-  .badge{
-    font-size:10.5px; letter-spacing:.4px; text-transform:uppercase; color:var(--fg-3);
-    border:1px solid var(--line); border-radius:999px; padding:2px 8px; margin-left:auto;
-  }
-
-  /* ---------- form ---------- */
-  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px}
-  .grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
-  @media (max-width:860px){ .grid3{grid-template-columns:1fr} }
-  label{display:block; font-size:11.5px; letter-spacing:.3px; color:var(--fg-3); margin-bottom:6px; text-transform:uppercase}
+  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
   input{
-    width:100%; background:var(--surface-2); color:var(--fg); border:1px solid var(--line);
-    border-radius:var(--r-md); padding:10px 12px; font:13.5px/1.4 inherit; outline:none;
-    transition:border-color .18s, box-shadow .18s, background .18s;
+    width:100%; background:rgba(0,0,0,.28); color:var(--ink); border:1px solid var(--line);
+    border-radius:12px; padding:12px 14px; font:13.5px/1.4 inherit; outline:none; transition:.2s;
   }
-  input:hover{background:var(--surface-3)}
-  input:focus{border-color:rgba(122,162,247,.55); box-shadow:0 0 0 3px var(--ring); background:var(--surface-3)}
-  input[readonly]{color:var(--fg-2); cursor:default}
-  input[type=password]{letter-spacing:1.5px}
-  .hint{font-size:11.5px; color:var(--fg-3); margin-top:8px}
-  kbd{
-    font:11.5px ui-monospace,Consolas,monospace; background:rgba(255,255,255,.06);
-    border:1px solid var(--line); border-radius:5px; padding:1px 6px; color:var(--fg-2);
-  }
-  code{font:12px ui-monospace,Consolas,monospace; color:#cdd6ff; background:rgba(122,162,247,.08);
-       border:1px solid rgba(122,162,247,.16); border-radius:5px; padding:1px 5px}
-
-  /* ---------- buttons ---------- */
-  .row{display:flex; gap:9px; flex-wrap:wrap; align-items:center}
-  .row.mt{margin-top:14px}
+  input:focus{border-color:rgba(138,167,255,.6); box-shadow:0 0 0 4px rgba(138,167,255,.14)}
+  input[readonly]{color:var(--ink-2)}
   .btn{
-    position:relative; background:var(--surface-2); color:var(--fg);
-    border:1px solid var(--line); border-radius:var(--r-md); padding:9px 14px;
-    font:13px/1 inherit; cursor:pointer; transition:background .16s,border-color .16s,transform .06s,box-shadow .2s;
+    border:1px solid var(--line); background:var(--glass-2); color:var(--ink);
+    border-radius:12px; padding:11px 18px; font:13.5px/1 inherit; cursor:pointer; transition:.18s;
+    white-space:nowrap;
   }
-  .btn:hover{background:var(--surface-3); border-color:var(--line-strong)}
-  .btn:active{transform:translateY(1px) scale(.995)}
-  .btn:focus-visible{outline:2px solid var(--ring); outline-offset:2px}
-  .btn[disabled]{opacity:.55; cursor:not-allowed}
+  .btn:hover{background:rgba(255,255,255,.09); border-color:var(--line-2)}
+  .btn:active{transform:translateY(1px)}
+  .btn:focus-visible{outline:2px solid rgba(138,167,255,.6); outline-offset:2px}
+  .btn[disabled]{opacity:.5; cursor:not-allowed}
   .btn.primary{
-    background:linear-gradient(180deg, rgba(122,162,247,.24), rgba(167,139,250,.14));
-    border-color:rgba(122,162,247,.45); color:#eaf0ff; font-weight:600;
-    box-shadow:0 10px 30px -16px rgba(122,162,247,.9), 0 0 0 1px rgba(255,255,255,.03) inset;
+    background:linear-gradient(150deg,rgba(138,167,255,.9),rgba(183,156,255,.82));
+    color:#0a0b12; font-weight:650; border-color:transparent;
+    box-shadow:0 16px 40px -20px rgba(138,167,255,.95);
   }
-  .btn.primary:hover{box-shadow:0 14px 34px -14px rgba(122,162,247,1)}
-  .btn.danger{color:#ffc9cd; border-color:rgba(242,96,106,.35)}
-  .btn.danger:hover{background:rgba(242,96,106,.12)}
-  .btn.ghost{background:transparent}
-  .btn.armed{
-    background:rgba(242,96,106,.14); border-color:rgba(242,96,106,.5); color:#ffd0d3;
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.link{background:none; border:none; color:var(--ink-3); padding:6px 2px; text-decoration:underline; text-underline-offset:3px}
+  .btn.link:hover{color:var(--ink)}
+  .btn.danger{color:#ffcdd0; border-color:rgba(244,116,124,.35)}
+  .btn.armed{background:rgba(244,116,124,.16); border-color:rgba(244,116,124,.55); color:#ffd9db}
+  .micro{margin:0; color:var(--ink-3); font-size:12px}
+  code{font:12px ui-monospace,Consolas,monospace; color:#cfd6ff; background:rgba(138,167,255,.1);
+       border:1px solid rgba(138,167,255,.18); border-radius:6px; padding:1px 6px}
+  .addr{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .addr code{font-size:13px; padding:7px 11px}
+
+  .checks{display:flex; flex-direction:column; gap:9px; margin-top:2px}
+  .check{display:flex; align-items:center; gap:10px; font-size:13px; animation:in .35s ease both}
+  .check .b{width:16px; text-align:center; color:var(--ok)}
+  .check.bad .b{color:var(--err)}
+  .check .d{margin-left:auto; color:var(--ink-3); font:11.5px ui-monospace,Consolas,monospace}
+  @keyframes in{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
+
+  /* ---------- advanced ---------- */
+  details.adv{margin-top:34px; border-top:1px solid var(--line); padding-top:18px}
+  details.adv summary{
+    cursor:pointer; color:var(--ink-3); font-size:12.5px; list-style:none;
+    display:flex; align-items:center; gap:8px;
   }
-
-  /* ---------- stats ---------- */
-  .stats{display:flex; flex-direction:column; gap:0; margin-top:2px}
-  .stat{display:flex; justify-content:space-between; gap:14px; padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px}
-  .stat:last-child{border-bottom:none}
-  .stat .k{color:var(--fg-3)}
-  .stat .v{color:var(--fg); text-align:right; word-break:break-all}
-  .stat .v small{color:var(--fg-3)}
-
-  /* ---------- mapping visual ---------- */
-  .map{display:flex; flex-direction:column; gap:10px; margin-top:2px}
-  .maprow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12.5px}
-  .tag{
-    border:1px solid var(--line); background:var(--surface-2); border-radius:999px;
-    padding:4px 10px; color:var(--fg-2); font:12px ui-monospace,Consolas,monospace;
+  details.adv summary::-webkit-details-marker{display:none}
+  details.adv summary::before{content:"＋"; font-size:13px}
+  details.adv[open] summary::before{content:"−"}
+  details.adv summary:hover{color:var(--ink-2)}
+  .advBody{display:flex; flex-direction:column; gap:16px; padding:18px 0 0}
+  .advBody h3{margin:0 0 2px; font-size:12.5px; color:var(--ink-2); font-weight:600; letter-spacing:.3px}
+  .grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}
+  @media (max-width:600px){ .grid3{grid-template-columns:1fr} }
+  label{display:block; font-size:11.5px; color:var(--ink-3); margin:0 0 6px}
+  .logBox{
+    background:rgba(0,0,0,.34); border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px; height:210px; overflow:auto; white-space:pre-wrap; word-break:break-word;
+    font:12px/1.6 ui-monospace,"Cascadia Code",Consolas,monospace; color:#b6bccd; margin:0;
   }
-  .tag.hit{border-color:rgba(70,211,154,.35); color:#bdf0da; background:rgba(70,211,154,.1)}
-  .arrow{color:var(--fg-3)}
-  .kpi{display:flex; gap:18px; margin-top:14px; padding-top:13px; border-top:1px solid var(--line)}
-  .kpi div{display:flex; flex-direction:column; gap:2px}
-  .kpi b{font-size:18px; font-weight:650; letter-spacing:.2px}
-  .kpi span{font-size:11.5px; color:var(--fg-3)}
-
-  /* ---------- checks ---------- */
-  .checks{display:flex; flex-direction:column; gap:7px; margin-top:14px}
-  .check{display:flex; align-items:center; gap:9px; font-size:12.5px}
-  .check .b{width:17px; text-align:center}
-  .check.ok .b{color:var(--ok)} .check.bad .b{color:var(--err)}
-  .check .d{color:var(--fg-3); margin-left:auto; font:11.5px ui-monospace,Consolas,monospace}
-
-  /* ---------- log ---------- */
-  .logwrap{position:relative; margin-top:4px}
-  .logwrap::after{content:""; position:absolute; inset:auto 0 0 0; height:34px; pointer-events:none;
-    background:linear-gradient(to top, rgba(10,10,13,.95), transparent)}
-  pre.log{
-    margin:0; background:rgba(8,8,11,.75); border:1px solid var(--line); border-radius:var(--r-md);
-    padding:12px 13px; height:268px; overflow:auto; white-space:pre-wrap; word-break:break-word;
-    font:12px/1.65 ui-monospace,"Cascadia Code",Consolas,monospace; color:#b9bdc9;
-    scrollbar-width:thin;
-  }
-  pre.log .t{color:#565b68}
-  pre.log .m{color:#c9cdfa}
-  pre.log .s2{color:var(--ok)} pre.log .s4{color:var(--warn)} pre.log .s5{color:var(--err)}
-  pre.log .ms{color:#565b68}
+  .logBox .t{color:#575d6b} .logBox .s2{color:var(--ok)} .logBox .s4{color:var(--warn)} .logBox .s5{color:var(--err)}
+  .logBox .m{color:#c8cffa} .logBox .ms{color:#575d6b}
   ::-webkit-scrollbar{width:9px;height:9px}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12); border-radius:9px}
-  ::-webkit-scrollbar-track{background:transparent}
 
-  /* ---------- toast ---------- */
   #toast{
-    position:fixed; left:50%; bottom:26px; transform:translate(-50%,16px);
-    min-width:220px; max-width:min(680px,92vw);
-    background:rgba(24,24,31,.92); border:1px solid var(--line-strong); border-radius:var(--r-md);
-    padding:12px 16px; font-size:13px; backdrop-filter:blur(14px);
-    box-shadow:0 24px 50px -22px rgba(0,0,0,.95);
-    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:20; overflow:hidden;
+    position:fixed; left:50%; bottom:28px; transform:translate(-50%,14px); z-index:9;
+    background:rgba(16,17,23,.94); border:1px solid var(--line-2); border-radius:14px;
+    padding:12px 18px; font-size:13px; max-width:min(560px,90vw); backdrop-filter:blur(16px);
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.95);
+    opacity:0; pointer-events:none; transition:opacity .22s, transform .22s;
   }
-  #toast::after{content:""; position:absolute; left:0; bottom:0; height:2px; width:100%;
-    background:linear-gradient(90deg,var(--accent),var(--accent-2)); opacity:.7;
-    transform-origin:left; animation:bar 3.5s linear forwards}
   #toast.show{opacity:1; transform:translate(-50%,0)}
-  #toast.ok{border-color:rgba(70,211,154,.45)} #toast.err{border-color:rgba(242,96,106,.5)}
-  #toast.err::after{background:var(--err)} #toast.ok::after{background:var(--ok)}
-  @keyframes bar{from{transform:scaleX(1)} to{transform:scaleX(0)}}
-
-  .skel{height:13px; border-radius:6px; background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.11),rgba(255,255,255,.05));
-    background-size:200% 100%; animation:sh 1.3s linear infinite}
-  @keyframes sh{from{background-position:200% 0} to{background-position:-200% 0}}
-
-  @media (prefers-reduced-motion: reduce){
-    *{animation:none !important; transition:none !important}
-  }
+  #toast.ok{border-color:rgba(95,216,164,.45)} #toast.err{border-color:rgba(244,116,124,.5)}
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important} }
 </style>
 </head>
 <body>
-<div class="bg"></div>
-<div class="wrap">
+<canvas id="aurora"></canvas>
+<div class="veil"></div>
 
-  <div class="topbar">
-    <div class="brandline">
-      <div class="mark">D</div>
+<main class="shell">
+  <header class="hero">
+    <div class="mark">D</div>
+    <h1>DeepSeek 网关</h1>
+    <p class="lede" id="lede">正在检查状态…</p>
+    <div class="statusline" id="statusline"></div>
+  </header>
+
+  <ol class="steps" id="steps">
+    <li class="step" id="step1" data-state="current">
+      <div class="head">
+        <span class="num">1</span>
+        <div class="title"><b>填入 DeepSeek API Key</b><span id="s1sub">key 只保存在本机，不会上传</span></div>
+        <span class="tag" id="s1tag">待完成</span>
+      </div>
+      <div class="body">
+        <input id="apiKey" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" />
+        <div class="row">
+          <button class="btn primary" data-save-key id="btnKey">保存并测试</button>
+          <button class="btn" data-act="test-upstream">只测试</button>
+          <span class="micro" id="keySourceLine"></span>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" id="step2" data-state="todo">
+      <div class="head">
+        <span class="num">2</span>
+        <div class="title"><b>接入 Cursor</b><span>把网关地址写进 Cursor 的模型设置</span></div>
+        <span class="tag" id="s2tag">待完成</span>
+      </div>
+      <div class="body">
+        <div class="addr">
+          <code id="baseUrl">http://127.0.0.1:8787/v1</code>
+          <button class="btn link" id="copyUrl">复制</button>
+        </div>
+        <p class="micro">写入这一步需要先完全退出 Cursor（改的是它的本地设置文件）。</p>
+        <div class="row">
+          <button class="btn primary" data-act="cursor-write-config">写入 Cursor 配置</button>
+          <button class="btn" data-act="restart-cursor">重启 Cursor</button>
+        </div>
+      </div>
+    </li>
+
+    <li class="step" id="step3" data-state="todo">
+      <div class="head">
+        <span class="num">3</span>
+        <div class="title"><b>验证</b><span>跑一遍自检，确认任意模型名都能通</span></div>
+        <span class="tag" id="s3tag">待完成</span>
+      </div>
+      <div class="body">
+        <div class="row">
+          <button class="btn primary" data-act="probe">运行自检</button>
+          <span class="micro" id="probeSummary"></span>
+        </div>
+        <div class="checks" id="probeResult"></div>
+      </div>
+    </li>
+  </ol>
+
+  <details class="adv">
+    <summary>高级设置（端口 · 模型名 · 自启 · 客户端补丁 · 日志）</summary>
+    <div class="advBody">
       <div>
-        <h1>DeepSeek 网关</h1>
-        <div class="sub">本机模型出口 · Cursor / Continue / 任何 OpenAI 兼容客户端</div>
+        <h3>服务</h3>
+        <div class="grid3">
+          <div><label for="port">端口</label><input id="port" type="number" min="1" max="65535" /></div>
+          <div><label for="flashModel">普通模型名 → 模型</label><input id="flashModel" type="text" /></div>
+          <div><label for="proModel">pro / reasoner → 模型</label><input id="proModel" type="text" /></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn" data-save-svc>保存</button>
+          <button class="btn" data-act="restart-gateway">重启网关</button>
+          <button class="btn" data-act="autostart-install">注册开机自启</button>
+          <button class="btn" data-act="autostart-remove">取消开机自启</button>
+        </div>
       </div>
-      <div class="urlchip">
-        <b id="baseUrl">http://127.0.0.1:8787/v1</b>
-        <button class="copy" id="copyUrl">复制</button>
+      <div id="patchBlock" hidden>
+        <h3>客户端补丁 <span class="micro">（仅本地，不进仓库）</span></h3>
+        <div class="row" id="patchActions" style="margin-top:8px"></div>
+      </div>
+      <div>
+        <h3>请求日志</h3>
+        <div class="row" style="justify-content:space-between; margin:8px 0">
+          <span class="micro" id="logDesc">最近 60 条</span>
+          <button class="btn link" id="logToggle">暂停刷新</button>
+        </div>
+        <pre class="logBox" id="log">加载中…</pre>
       </div>
     </div>
-    <div class="chips" id="chips">
-      <span class="chip"><span class="dot"></span><span class="skel" style="width:90px"></span></span>
-      <span class="chip"><span class="dot"></span><span class="skel" style="width:70px"></span></span>
-    </div>
-  </div>
-
-  <div class="bento">
-
-    <section class="card span2" id="keyCard">
-      <h2><span class="ico">◈</span>API Key<span class="badge">只需填这一处</span></h2>
-      <p class="desc">DeepSeek 的 key。留空则自动回退到环境变量 <code>GW_API_KEY</code> 或 dsh 已保存的 key（<code>~/.dsh/.credentials.yaml</code>）。</p>
-      <div class="grid2">
-        <div>
-          <label for="apiKey">DeepSeek API Key</label>
-          <input id="apiKey" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" />
-        </div>
-        <div>
-          <label for="keySource">当前来源</label>
-          <input id="keySource" type="text" readonly />
-        </div>
-      </div>
-      <div class="row mt">
-        <button class="btn primary" data-save-key>保存</button>
-        <button class="btn" data-act="test-upstream">测试连接</button>
-        <button class="btn ghost" data-read-dsh>改用 dsh 里的 key</button>
-      </div>
-      <div class="hint">key 只写入本机 <kbd>config.json</kbd>（已在 .gitignore），不会上传任何地方。</div>
-    </section>
-
-    <section class="card" id="svcCard">
-      <h2><span class="ico">⚙</span>服务</h2>
-      <p class="desc">端口与模型映射，保存后立即生效。</p>
-      <div class="grid3">
-        <div><label for="port">监听端口</label><input id="port" type="number" min="1" max="65535" /></div>
-        <div><label for="flashModel">普通模型名 → 实际模型</label><input id="flashModel" type="text" /></div>
-        <div><label for="proModel">pro / reasoner → 模型</label><input id="proModel" type="text" /></div>
-      </div>
-      <div class="row mt">
-        <button class="btn primary" data-save-svc>保存</button>
-        <button class="btn" data-act="restart-gateway">重启网关</button>
-      </div>
-      <div class="kpi" id="kpi">
-        <div><b data-count="requests">–</b><span>已处理请求</span></div>
-        <div><b data-count="uptimeSec">–</b><span>运行时长</span></div>
-        <div><b data-count="models">–</b><span>可用模型</span></div>
-      </div>
-    </section>
-
-    <section class="card" id="mapCard">
-      <h2><span class="ico">⇄</span>模型名映射</h2>
-      <p class="desc">客户端想叫什么名字都行 —— 网关按规则换成 DeepSeek 真正认的 id。</p>
-      <div class="map">
-        <div class="maprow">
-          <span class="tag">名字含 pro / reasoner / r1</span><span class="arrow">→</span>
-          <span class="tag hit" id="mapPro">deepseek-v4-pro</span>
-        </div>
-        <div class="maprow">
-          <span class="tag">其余任何名字（claude-* / gpt-* / o3 / 自定义）</span><span class="arrow">→</span>
-          <span class="tag hit" id="mapFlash">deepseek-flash</span>
-        </div>
-      </div>
-      <div class="row mt" style="gap:10px">
-        <input id="mapTry" placeholder="随便输个模型名试试实时映射…" style="flex:1;min-width:190px" spellcheck="false" />
-        <span class="tag hit" id="mapOut">→ deepseek-flash</span>
-      </div>
-      <div class="row" style="margin-top:9px;gap:7px">
-        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="gpt-4o">gpt-4o</button>
-        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="claude-4.5-sonnet">claude-4.5-sonnet</button>
-        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="o3-mini">o3-mini</button>
-        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="deepseek-v4-pro">deepseek-v4-pro</button>
-        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="please-enable-some-models">验证探针名</button>
-      </div>
-    </section>
-
-    <section class="card" id="cursorCard" hidden>
-      <h2><span class="ico">◎</span>Cursor 集成<span class="badge">本机</span></h2>
-      <p class="desc">把 Base URL 写进 Cursor，让它的模型出口指向本网关。写入前需完全退出 Cursor。</p>
-      <div class="stats" id="cursorStats"></div>
-      <div class="row mt" id="cursorActions"></div>
-    </section>
-
-    <section class="card" id="patchCard" hidden>
-      <h2><span class="ico">⌘</span>客户端补丁<span class="badge">仅本地 · 不进仓库</span></h2>
-      <p class="desc">修改本机编辑器安装文件。只在存在 <code>local-actions.mjs</code> 时出现，公开仓库里没有这些动作。</p>
-      <div class="stats" id="patchStats"></div>
-      <div class="row mt" id="patchActions"></div>
-    </section>
-
-    <section class="card span2" id="actionsCard">
-      <h2><span class="ico">▶</span>动作</h2>
-      <p class="desc">一键完成剩下的活。危险动作需要点两次确认。</p>
-      <div class="row" id="coreActions"></div>
-      <div class="checks" id="probeResult"></div>
-    </section>
-
-    <section class="card span2" id="logCard">
-      <h2><span class="ico">≡</span>请求日志
-        <button class="btn ghost" style="margin-left:auto;padding:6px 11px;font-size:12px" id="logToggle">暂停刷新</button>
-      </h2>
-      <p class="desc" id="logDesc">实时 tail（3 秒）· 只记录客户端请求，面板自身的调用不入日志</p>
-      <div class="logwrap"><pre class="log" id="log">加载中…</pre></div>
-    </section>
-
-  </div>
-</div>
+  </details>
+</main>
 <div id="toast"></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
-const $$ = (s) => Array.from(document.querySelectorAll(s));
-let status = null, logPaused = false;
+let status = null, logPaused = false, probeOk = null, firstRender = true;
 
-/* ---------- toast ---------- */
+/* ================= animated background =================
+   Calm aurora: three slowly drifting colour fields on a near-black canvas, plus
+   a sparse layer of dust. Drawn at ~30fps, paused when the tab is hidden and
+   frozen entirely when the user prefers reduced motion. */
+(function aurora() {
+  const cv = $('#aurora'), ctx = cv.getContext('2d', { alpha: false });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const P = [
+    { x: .22, y: .18, r: .62, c: [122, 150, 255], sx: .000021, sy: .000013 },
+    { x: .78, y: .34, r: .55, c: [170, 130, 255], sx: -.000017, sy: .000019 },
+    { x: .5,  y: .92, r: .68, c: [70, 200, 190],  sx: .000013, sy: -.000016 },
+  ];
+  const dust = Array.from({ length: 26 }, () => ({
+    x: Math.random(), y: Math.random(), z: .3 + Math.random() * .7,
+    vx: (Math.random() - .5) * .000012, vy: -.000008 - Math.random() * .000012,
+    ph: Math.random() * Math.PI * 2,
+  }));
+  let w = 0, h = 0, dpr = 1, t = 0;
+
+  function size() {
+    dpr = Math.min(devicePixelRatio || 1, 1.5);
+    w = cv.width = innerWidth * dpr;
+    h = cv.height = innerHeight * dpr;
+  }
+  size();
+  addEventListener('resize', size);
+
+  function frame() {
+    t += 16;
+    ctx.fillStyle = '#06070b';
+    ctx.fillRect(0, 0, w, h);
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of P) {
+      const x = (p.x + Math.sin(t * p.sx * 1000) * .06) * w;
+      const y = (p.y + Math.cos(t * p.sy * 1000) * .07) * h;
+      const r = p.r * Math.max(w, h) * .8;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${p.c[0]},${p.c[1]},${p.c[2]},.16)`);
+      g.addColorStop(.45, `rgba(${p.c[0]},${p.c[1]},${p.c[2]},.05)`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    for (const d of dust) {
+      d.x += d.vx; d.y += d.vy;
+      if (d.y < -.02) { d.y = 1.02; d.x = Math.random(); }
+      if (d.x < -.02) d.x = 1.02;
+      const a = (.18 + .5 * (.5 + .5 * Math.sin(t * .0007 + d.ph))) * d.z * .5;
+      ctx.fillStyle = `rgba(200,214,255,${a.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.arc(d.x * w, d.y * h, d.z * 1.1 * dpr, 0, 6.2832);
+      ctx.fill();
+    }
+  }
+
+  if (reduce) frame();
+  else {
+    let last = 0;
+    (function loop(now) {
+      requestAnimationFrame(loop);
+      if (document.hidden || now - last < 33) return;
+      last = now; frame();
+    })(0);
+  }
+})();
+
+/* ================= helpers ================= */
 function toast(msg, kind) {
   const t = $('#toast');
-  t.textContent = msg;
-  t.className = 'show ' + (kind || '');
+  t.textContent = msg; t.className = 'show ' + (kind || '');
   clearTimeout(t._t);
-  t._t = setTimeout(() => { t.className = ''; }, kind === 'err' ? 6000 : 3500);
+  t._t = setTimeout(() => { t.className = ''; }, kind === 'err' ? 6000 : 3200);
 }
-
-/* ---------- api ---------- */
 async function api(path, opts) {
   const r = await fetch(path, opts);
   const text = await r.text();
@@ -389,141 +342,130 @@ async function api(path, opts) {
   if (!r.ok && json.ok === undefined) json.ok = false;
   return json;
 }
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* fallback */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.cssText = 'position:fixed;top:-999px';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch { return false; }
+}
+const dot = (state, label) =>
+  `<span><i class="dot ${state === true ? 'ok' : state === false ? 'err' : 'warn'}"></i>${label}</span>`;
 
-/* ---------- cursor spotlight on cards ---------- */
-document.addEventListener('pointermove', (e) => {
-  const card = e.target.closest('.card');
-  if (!card) return;
-  const r = card.getBoundingClientRect();
-  card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
-  card.style.setProperty('--my', (e.clientY - r.top) + 'px');
-}, { passive: true });
-
-/* ---------- count-up ---------- */
-function countUp(el, to) {
-  const from = Number(el.dataset.cur || 0);
-  if (from === to) return;
-  el.dataset.cur = to;
-  const steps = 18, delta = (to - from) / steps;
-  let i = 0;
-  const tick = () => {
-    i++;
-    el.textContent = Math.round(from + delta * i).toLocaleString();
-    if (i < steps) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
+/* ================= guidance ================= */
+function setStep(id, state, tagText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.dataset.state = state;
+  const tag = document.getElementById(id.replace('step', 's') + 'tag');
+  if (tag) tag.textContent = tagText;
 }
 
-function fmtUptime(sec) {
-  if (sec < 60) return sec + ' 秒';
-  if (sec < 3600) return Math.floor(sec / 60) + ' 分';
-  return (sec / 3600).toFixed(1) + ' 小时';
-}
-
-function chip(label, state, extra) {
-  const cls = state === true ? 'ok' : state === false ? 'err' : 'warn';
-  return `<span class="chip"><span class="dot ${cls}"></span><b>${label}</b>${extra ? ' · ' + extra : ''}</span>`;
-}
-
-/* ---------- render ---------- */
-function renderStatus(s) {
+function render(s) {
   status = s;
-  const g = s.gateway, k = s.key, up = s.upstream;
+  const keyOk = !!(s.key.present && s.upstream.ok);
+  const cursorOk = !!(s.cursor && s.cursor.baseUrl === s.gateway.baseUrl);
+  const probeDone = probeOk === true;
 
-  $('#baseUrl').textContent = g.baseUrl;
-  $('#chips').innerHTML = [
-    chip('网关', true, `:${g.port} · pid ${g.pid}`),
-    chip('DeepSeek', !!up.ok, up.ok ? up.models.length + ' 个模型' : '连接失败'),
-    chip('API Key', !!k.present, k.present ? k.source : '未配置'),
-    s.cursor ? chip('Cursor', !!s.cursor.installed, s.cursor.version || '') : '',
+  /* one-line status, no chip noise */
+  $('#lede').textContent = !s.key.present || !s.upstream.ok
+    ? '第一步：把 DeepSeek 的 key 交给网关，其余自动完成'
+    : !cursorOk ? '下一步：把网关地址写进 Cursor'
+      : !probeDone ? '最后一步：跑一遍自检确认通路'
+        : '全部就绪 —— Cursor 已经在用你的 DeepSeek';
+  $('#statusline').innerHTML = [
+    dot(true, `网关 :${s.gateway.port}`),
+    dot(!!s.upstream.ok, s.upstream.ok ? 'DeepSeek 已连接' : 'DeepSeek 未连接'),
+    dot(!!s.key.present, s.key.present ? 'Key 已配置' : 'Key 未配置'),
+    s.cursor ? dot(cursorOk, cursorOk ? 'Cursor 已接入' : 'Cursor 未接入') : '',
   ].join('');
 
-  const kpi = $('#kpi').querySelectorAll('b[data-count]');
-  countUp(kpi[0], g.requests);
-  kpi[1].textContent = fmtUptime(g.uptimeSec);
-  kpi[2].textContent = up.models.length;
+  /* step 1 */
+  const s1 = keyOk ? 'done' : 'current';
+  setStep('step1', s1, keyOk ? '已完成' : '待完成');
+  $('#s1sub').textContent = s.key.present
+    ? `当前来源：${s.key.source}（${s.key.length} 字符）`
+    : 'key 只保存在本机，不会上传';
+  if (document.activeElement !== $('#apiKey')) {
+    $('#apiKey').placeholder = s.key.present ? '已保存 · 粘贴新 key 可覆盖' : 'sk-…';
+  }
+  $('#keySourceLine').textContent = keyOk ? `已连通，可用：${s.upstream.models.join(' / ')}` : '';
 
-  $('#keySource').value = k.present ? `${k.source}（${k.length} 字符）` : '未配置';
-  if (document.activeElement !== $('#apiKey')) $('#apiKey').placeholder = k.present ? '已保存 · 输入新值可覆盖' : 'sk-…';
-  if (document.activeElement !== $('#port')) $('#port').value = g.port;
+  /* step 2 */
+  const s2 = keyOk ? (cursorOk ? 'done' : 'current') : 'todo';
+  setStep('step2', s2, s2 === 'done' ? '已完成' : s2 === 'current' ? '待完成' : '先完成第 1 步');
+  $('#baseUrl').textContent = s.gateway.baseUrl;
+
+  /* step 3 */
+  const s3 = cursorOk || keyOk ? (probeDone ? 'done' : 'current') : 'todo';
+  setStep('step3', s3, probeDone ? '已通过' : s3 === 'current' ? '待完成' : '先完成前面步骤');
+
+  /* advanced */
+  if (document.activeElement !== $('#port')) $('#port').value = s.gateway.port;
   if (document.activeElement !== $('#flashModel')) $('#flashModel').value = s.models.flash;
   if (document.activeElement !== $('#proModel')) $('#proModel').value = s.models.pro;
-  $('#mapFlash').textContent = s.models.flash;
-  $('#mapPro').textContent = s.models.pro;
-  updateMapOut();
 
-  const core = s.actions.filter((a) => !a.local && a.name !== 'test-upstream');
-  $('#coreActions').innerHTML = core.map((a) =>
-    `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.name}">${a.label}</button>`).join('');
-
-  const localActs = s.actions.filter((a) => a.local);
-  if (s.cursor) {
-    $('#cursorCard').hidden = false;
-    const c = s.cursor;
-    $('#cursorStats').innerHTML = [
-      ['安装位置', c.exePath || '—'],
-      ['版本', c.version || '—'],
-      ['运行中', c.running ? '是' : '否'],
-      ['已写入 Base URL', c.baseUrl || '未写入'],
-      ['客户端补丁', c.patched === undefined ? '—' : (c.patched ? '已应用' : '未应用')],
-    ].map(([a, b]) => `<div class="stat"><span class="k">${a}</span><span class="v">${b}</span></div>`).join('');
-  }
-  if (s.localActionsLoaded && localActs.length) {
-    $('#patchCard').hidden = false;
-    const patchActs = localActs.filter((a) => /patch/.test(a.name));
-    const other = localActs.filter((a) => !/patch/.test(a.name));
-    $('#patchActions').innerHTML = [...patchActs, ...other].map((a) =>
+  const localActs = s.actions.filter((a) => a.local && /patch/.test(a.name));
+  if (localActs.length) {
+    $('#patchBlock').hidden = false;
+    $('#patchActions').innerHTML = localActs.map((a) =>
       `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.name}">${a.label}</button>`).join('');
-    $('#patchStats').innerHTML = (s.cursor && s.cursor.patched !== undefined)
-      ? `<div class="stat"><span class="k">补丁状态</span><span class="v">${s.cursor.patched ? '已应用（7 处）' : '未应用'}</span></div>` : '';
+  }
+
+  /* land the user on the step they actually need */
+  if (firstRender) {
+    firstRender = false;
+    const cur = ['step1', 'step2', 'step3'].find((id) => $('#' + id).dataset.state === 'current');
+    if (cur === 'step1') $('#apiKey').focus({ preventScroll: true });
   }
 }
 
 async function loadStatus() {
-  try { renderStatus(await api('/api/status')); }
-  catch (e) { $('#chips').innerHTML = chip('无法连接网关', false, e.message); }
+  try { render(await api('/api/status')); }
+  catch (e) { $('#statusline').innerHTML = dot(false, '读取状态失败：' + e.message); }
 }
 
-/* ---------- log with colourised status codes ---------- */
+/* ================= log ================= */
 function paint(raw) {
   if (!raw) return '<span class="t">（还没有请求）</span>';
   return raw.split('\n').map((line) => {
     let h = line.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
     h = h.replace(/^(\[[^\]]+\])/, '<span class="t">$1</span>');
-    h = h.replace(/->\s(\d{3})/, (m, code) =>
-      '<span style="color:#565b68">-></span> <span class="' +
-      (code[0] === '2' ? 's2' : code[0] === '4' ? 's4' : 's5') + '">' + code + '</span>');
+    h = h.replace(/->\s(\d{3})/, (m, c) => `<span class="t">-></span> <span class="${c[0] === '2' ? 's2' : c[0] === '4' ? 's4' : 's5'}">${c}</span>`);
     h = h.replace(/\((\d+)ms\)/g, '<span class="ms">($1ms)</span>');
     h = h.replace(/\b(chat|messages|passthrough|GET|POST)\b/, '<span class="m">$1</span>');
     return h;
   }).join('\n');
 }
-
 async function loadLog() {
   if (logPaused) return;
   try {
     const r = await api('/api/log?tail=60');
     const el = $('#log');
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    const stick = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     el.innerHTML = paint(r.tail);
-    if (atBottom) el.scrollTop = el.scrollHeight;
-    $('#logDesc').textContent = `实时 tail（3 秒）· ${(r.tail || '').split('\n').filter(Boolean).length} 条 · 面板自身的调用不入日志`;
+    if (stick) el.scrollTop = el.scrollHeight;
+    $('#logDesc').textContent = `最近 ${(r.tail || '').split('\n').filter(Boolean).length} 条 · 3 秒刷新`;
   } catch { /* ignore */ }
 }
 
-/* ---------- actions ---------- */
+/* ================= actions ================= */
 async function runAction(name, btn) {
   if (btn) btn.disabled = true;
   try {
-    const r = await api('/api/action', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name }),
-    });
+    const r = await api('/api/action', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }) });
     if (r.checks) {
+      probeOk = !!r.ok;
       $('#probeResult').innerHTML = r.checks.map((c) =>
-        `<div class="check ${c.ok ? 'ok' : 'bad'}"><span class="b">${c.ok ? '✓' : '✗'}</span>${c.name}<span class="d">${c.detail || ''}</span></div>`).join('');
+        `<div class="check ${c.ok ? '' : 'bad'}"><span class="b">${c.ok ? '✓' : '✗'}</span>${c.name}<span class="d">${c.detail || ''}</span></div>`).join('');
+      $('#probeSummary').textContent = r.ok ? '全部通过' : '有失败项，见下方';
+    } else if (name === 'test-upstream' && r.ok) {
+      $('#probeSummary').textContent = `连通 · ${r.latency}ms`;
     }
     toast((r.ok ? '✓ ' : '✗ ') + (r.message || name), r.ok ? 'ok' : 'err');
+    if (name === 'restart-gateway') setTimeout(loadStatus, 2200);
   } catch (e) {
     toast('✗ ' + e.message, 'err');
   } finally {
@@ -532,73 +474,45 @@ async function runAction(name, btn) {
   }
 }
 
-/* ---------- clipboard with fallback (works without the async clipboard permission) ---------- */
-async function copyText(text) {
-  try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }
-  try {
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.setAttribute('readonly', '');
-    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
-    document.body.appendChild(ta); ta.select();
-    const ok = document.execCommand('copy');
-    ta.remove();
-    return ok;
-  } catch { return false; }
-}
-
-/* ---------- live model-name mapper (client-side, mirrors the server rule) ---------- */
-function mapped(name) {
-  const n = String(name || '').toLowerCase();
-  const mm = (status && status.models) || { flash: 'deepseek-flash', pro: 'deepseek-v4-pro' };
-  return /pro|reasoner|r1/.test(n) ? mm.pro : mm.flash;
-}
-function updateMapOut() {
-  const v = $('#mapTry').value.trim();
-  $('#mapOut').textContent = v ? '→ ' + mapped(v) : '→ ' + ((status && status.models) ? status.models.flash : 'deepseek-flash');
-}
-$('#mapTry').addEventListener('input', updateMapOut);
-
-document.addEventListener('click', (ev) => {
-  const btn = ev.target.closest('button');
-  if (!btn) return;
-
-  if (btn.dataset.try !== undefined) {
-    $('#mapTry').value = btn.dataset.try;
-    updateMapOut();
+document.addEventListener('click', async (ev) => {
+  /* click a finished step to peek at / edit its settings */
+  const head = ev.target.closest('.head');
+  if (head) {
+    const step = head.closest('.step');
+    if (step && step.dataset.state === 'done') step.classList.toggle('peek');
     return;
   }
 
+  const btn = ev.target.closest('button');
+  if (!btn) return;
+
   if (btn.id === 'copyUrl') {
-    copyText($('#baseUrl').textContent).then((ok) => {
-      if (!ok) return toast('复制失败，请手动选中文本复制', 'err');
-      btn.textContent = '已复制'; btn.classList.add('done');
-      setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('done'); }, 1600);
-    });
+    const ok = await copyText($('#baseUrl').textContent);
+    toast(ok ? '已复制网关地址' : '复制失败，请手动选中', ok ? 'ok' : 'err');
     return;
   }
 
   const act = btn.dataset.act;
   if (act) {
     if (btn.dataset.confirmed !== '1' && /restart|patch|revert|remove/.test(act)) {
-      btn.dataset.confirmed = '1';
-      btn.dataset.label = btn.textContent;
-      btn.textContent = '再点一次确认';
-      btn.classList.add('armed');
-      setTimeout(() => {
-        btn.dataset.confirmed = '0'; btn.textContent = btn.dataset.label; btn.classList.remove('armed');
-      }, 4000);
+      btn.dataset.confirmed = '1'; btn.dataset.label = btn.textContent;
+      btn.textContent = '再点一次确认'; btn.classList.add('armed');
+      setTimeout(() => { btn.dataset.confirmed = '0'; btn.textContent = btn.dataset.label; btn.classList.remove('armed'); }, 4000);
       return;
     }
-    btn.classList.remove('armed');
-    if (btn.dataset.label) btn.textContent = btn.dataset.label;
+    if (btn.dataset.label) { btn.textContent = btn.dataset.label; btn.classList.remove('armed'); }
     return runAction(act, btn);
   }
 
   if (btn.hasAttribute('data-save-key')) {
-    return api('/api/config', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ apiKey: $('#apiKey').value.trim() }),
-    }).then((r) => { toast((r.ok ? '✓ ' : '✗ ') + (r.message || ''), r.ok ? 'ok' : 'err'); $('#apiKey').value = ''; loadStatus(); });
+    const key = $('#apiKey').value.trim();
+    if (!key) return toast('请先粘贴 key', 'err');
+    const saved = await api('/api/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ apiKey: key }) });
+    if (!saved.ok) return toast('✗ ' + saved.message, 'err');
+    $('#apiKey').value = '';
+    const test = await api('/api/action', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'test-upstream' }) });
+    toast(test.ok ? '✓ key 已保存，DeepSeek 连通' : '✗ key 已保存，但连接失败：' + (test.message || ''), test.ok ? 'ok' : 'err');
+    return loadStatus();
   }
 
   if (btn.hasAttribute('data-save-svc')) {
@@ -606,13 +520,6 @@ document.addEventListener('click', (ev) => {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ port: Number($('#port').value), flashModel: $('#flashModel').value.trim(), proModel: $('#proModel').value.trim() }),
     }).then((r) => { toast((r.ok ? '✓ ' : '✗ ') + (r.message || ''), r.ok ? 'ok' : 'err'); loadStatus(); });
-  }
-
-  if (btn.hasAttribute('data-read-dsh')) {
-    const fromDsh = status && status.key && /credentials\.yaml/.test(status.key.source);
-    if (fromDsh) return toast('当前已经在用 dsh 里的 key（config.json 未覆盖）', 'ok');
-    return api('/api/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ apiKey: '' }) })
-      .then(() => { toast('✓ 已清掉 config.json 里的 key，回退到 dsh', 'ok'); loadStatus(); });
   }
 });
 
@@ -624,7 +531,7 @@ $('#logToggle').addEventListener('click', (e) => {
 
 loadStatus(); loadLog();
 setInterval(loadStatus, 5000);
-setInterval(loadLog, 3000);
+setInterval(loadLog, 4000);
 </script>
 </body>
 </html>
