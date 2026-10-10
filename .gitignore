@@ -10,6 +10,9 @@ local-actions.mjs
 # local runtime state (holds your API key)
 config.json
 
+# local screenshots / scratch
+.preview/
+
 # local backups of patched application bundles
 *.orig-*
 *.bak-*

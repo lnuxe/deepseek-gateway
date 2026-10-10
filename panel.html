@@ -3,172 +3,376 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark" />
 <title>DeepSeek 网关 · 控制面板</title>
 <style>
+  /* ---------- tokens ---------- */
   :root{
-    --bg:#0d0d0f; --card:#16161a; --card-2:#1c1c21; --line:#2a2a31;
-    --fg:#e8e8ea; --fg-dim:#9a9aa4; --fg-dim2:#6e6e78;
-    --ok:#3ecf8e; --warn:#e2b341; --err:#ef5b5b; --accent:#6f9cf5; --accent-2:#8b7bf0;
-    --radius:12px;
+    --bg:#08080a;
+    --bg-2:#0c0c10;
+    --surface:rgba(20,20,25,.72);
+    --surface-2:rgba(28,28,35,.6);
+    --surface-3:rgba(38,38,48,.55);
+    --line:rgba(255,255,255,.075);
+    --line-strong:rgba(255,255,255,.14);
+    --fg:#eceef2; --fg-2:#a2a6b3; --fg-3:#6d717d;
+    --ok:#46d39a; --warn:#e8bd54; --err:#f2606a;
+    --accent:#7aa2f7; --accent-2:#a78bfa; --accent-3:#46d39a;
+    --ring:rgba(122,162,247,.35);
+    --r-lg:16px; --r-md:11px; --r-sm:8px;
+    --shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 18px 40px -22px rgba(0,0,0,.85);
   }
   *{box-sizing:border-box}
+  html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:var(--fg);
-    font:14px/1.55 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
-    -webkit-font-smoothing:antialiased;
+    font:14px/1.6 "Inter","Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    font-variant-numeric:tabular-nums;
   }
-  .wrap{max-width:940px; margin:0 auto; padding:28px 20px 60px}
-  header{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:6px}
-  h1{font-size:19px; margin:0; letter-spacing:.2px}
-  header .sub{color:var(--fg-dim2); font-size:12.5px}
-  .pills{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 22px}
-  .pill{
-    display:inline-flex; align-items:center; gap:7px; padding:5px 11px;
-    background:var(--card); border:1px solid var(--line); border-radius:999px;
-    font-size:12.5px; color:var(--fg-dim);
+
+  /* ---------- ambient background (dot grid + glow) ---------- */
+  .bg{position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none}
+  .bg::before{
+    content:""; position:absolute; inset:-2px;
+    background-image:radial-gradient(rgba(255,255,255,.055) 1px, transparent 1px);
+    background-size:22px 22px;
+    mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 78%);
+    -webkit-mask-image:radial-gradient(ellipse 90% 60% at 50% 0%, #000 35%, transparent 78%);
   }
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--fg-dim2);flex:0 0 auto}
+  .bg::after{
+    content:""; position:absolute; width:900px; height:520px; left:50%; top:-260px; transform:translateX(-50%);
+    background:
+      radial-gradient(closest-side, rgba(122,162,247,.20), transparent 70%),
+      radial-gradient(closest-side at 70% 40%, rgba(167,139,250,.16), transparent 70%);
+    filter:blur(10px);
+  }
+
+  .wrap{max-width:1060px; margin:0 auto; padding:26px 20px 72px}
+
+  /* ---------- sticky top bar ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:5; margin:0 -20px 22px; padding:14px 20px 12px;
+    background:linear-gradient(to bottom, rgba(8,8,10,.92) 60%, rgba(8,8,10,.55) 85%, transparent);
+    backdrop-filter:blur(14px);
+  }
+  .brandline{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+  .mark{
+    width:30px; height:30px; border-radius:9px; flex:0 0 auto;
+    background:linear-gradient(140deg,var(--accent),var(--accent-2));
+    display:grid; place-items:center; color:#0a0a0f; font-weight:800; font-size:15px;
+    box-shadow:0 8px 22px -10px rgba(122,162,247,.85);
+  }
+  h1{font-size:16px; margin:0; letter-spacing:.2px; font-weight:650}
+  .sub{color:var(--fg-3); font-size:12.5px}
+  .urlchip{
+    margin-left:auto; display:inline-flex; align-items:center; gap:8px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:999px;
+    padding:5px 7px 5px 12px; font:12.5px/1 ui-monospace,Consolas,monospace; color:var(--fg-2);
+  }
+  .urlchip b{color:var(--fg); font-weight:600}
+  .copy{
+    background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--fg-2);
+    border-radius:999px; padding:4px 9px; font-size:11.5px; cursor:pointer; transition:.15s;
+  }
+  .copy:hover{background:rgba(255,255,255,.12); color:var(--fg)}
+  .copy.done{background:rgba(70,211,154,.16); border-color:rgba(70,211,154,.4); color:var(--ok)}
+
+  .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+  .chip{
+    display:inline-flex; align-items:center; gap:8px; padding:5px 12px 5px 10px;
+    background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    font-size:12.5px; color:var(--fg-2); backdrop-filter:blur(8px); white-space:nowrap;
+  }
+  .chip b{color:var(--fg); font-weight:600}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--fg-3);position:relative;flex:0 0 auto}
   .dot.ok{background:var(--ok)} .dot.err{background:var(--err)} .dot.warn{background:var(--warn)}
+  .dot.ok::after,.dot.err::after,.dot.warn::after{
+    content:""; position:absolute; inset:-4px; border-radius:50%;
+    border:1px solid currentColor; opacity:.55; animation:ring 2.4s ease-out infinite;
+  }
+  .dot.ok{color:var(--ok)} .dot.err{color:var(--err)} .dot.warn{color:var(--warn)}
+  @keyframes ring{0%{transform:scale(.6);opacity:.6}70%{transform:scale(1.5);opacity:0}100%{opacity:0}}
+
+  /* ---------- bento grid ---------- */
+  .bento{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px}
+  @media (max-width:860px){ .bento{grid-template-columns:1fr} .urlchip{margin-left:0} }
+
   .card{
-    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
-    padding:18px; margin-bottom:14px;
+    position:relative; overflow:hidden;
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--r-lg);
+    padding:18px 18px 17px; box-shadow:var(--shadow); backdrop-filter:blur(12px);
+    transition:border-color .25s, transform .25s;
   }
+  .card::before{ /* cursor spotlight */
+    content:""; position:absolute; inset:0; opacity:0; transition:opacity .3s; pointer-events:none;
+    background:radial-gradient(220px circle at var(--mx,50%) var(--my,0%), rgba(122,162,247,.10), transparent 65%);
+  }
+  .card:hover::before{opacity:1}
+  .card:hover{border-color:var(--line-strong)}
+  .span2{grid-column:1 / -1}
+  @media (max-width:860px){ .span2{grid-column:auto} }
+
   .card h2{
-    margin:0 0 4px; font-size:13.5px; font-weight:600; letter-spacing:.3px;
-    display:flex; align-items:center; gap:8px;
+    margin:0 0 3px; font-size:13px; font-weight:650; letter-spacing:.3px;
+    display:flex; align-items:center; gap:9px;
   }
-  .card .desc{color:var(--fg-dim2); font-size:12.5px; margin:0 0 14px}
-  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px}
-  .row:last-child{margin-bottom:0}
-  label.fld{display:block; font-size:12px; color:var(--fg-dim); margin-bottom:5px}
-  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px}
-  input,select{
-    width:100%; background:var(--card-2); color:var(--fg); border:1px solid var(--line);
-    border-radius:9px; padding:9px 11px; font:13px/1.4 inherit; outline:none;
+  .card h2 .ico{color:var(--accent); font-size:14px; line-height:1}
+  .card .desc{color:var(--fg-3); font-size:12.5px; margin:0 0 15px; max-width:70ch}
+  .badge{
+    font-size:10.5px; letter-spacing:.4px; text-transform:uppercase; color:var(--fg-3);
+    border:1px solid var(--line); border-radius:999px; padding:2px 8px; margin-left:auto;
   }
-  input:focus{border-color:var(--accent)}
-  input[type=password]{letter-spacing:1px}
-  button{
-    background:var(--card-2); color:var(--fg); border:1px solid var(--line);
-    border-radius:9px; padding:9px 15px; font:13px/1 inherit; cursor:pointer;
-    transition:background .12s,border-color .12s,transform .05s;
+
+  /* ---------- form ---------- */
+  .grid2{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px}
+  .grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
+  @media (max-width:860px){ .grid3{grid-template-columns:1fr} }
+  label{display:block; font-size:11.5px; letter-spacing:.3px; color:var(--fg-3); margin-bottom:6px; text-transform:uppercase}
+  input{
+    width:100%; background:var(--surface-2); color:var(--fg); border:1px solid var(--line);
+    border-radius:var(--r-md); padding:10px 12px; font:13.5px/1.4 inherit; outline:none;
+    transition:border-color .18s, box-shadow .18s, background .18s;
   }
-  button:hover{background:#22222a; border-color:#3a3a44}
-  button:active{transform:translateY(1px)}
-  button.primary{background:var(--accent); border-color:var(--accent); color:#0b1020; font-weight:600}
-  button.primary:hover{background:#7ea8f7}
-  button.danger{border-color:#4a2b2b; color:#f0a0a0}
-  button.danger:hover{background:#2a1b1b}
-  button:disabled{opacity:.5; cursor:not-allowed}
-  .hint{font-size:12px; color:var(--fg-dim2); margin-top:8px}
-  .kbd{font:12px ui-monospace,Consolas,monospace; background:#0000; border:1px solid var(--line); border-radius:5px; padding:1px 6px; color:var(--fg-dim)}
-  .stat{display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13px}
+  input:hover{background:var(--surface-3)}
+  input:focus{border-color:rgba(122,162,247,.55); box-shadow:0 0 0 3px var(--ring); background:var(--surface-3)}
+  input[readonly]{color:var(--fg-2); cursor:default}
+  input[type=password]{letter-spacing:1.5px}
+  .hint{font-size:11.5px; color:var(--fg-3); margin-top:8px}
+  kbd{
+    font:11.5px ui-monospace,Consolas,monospace; background:rgba(255,255,255,.06);
+    border:1px solid var(--line); border-radius:5px; padding:1px 6px; color:var(--fg-2);
+  }
+  code{font:12px ui-monospace,Consolas,monospace; color:#cdd6ff; background:rgba(122,162,247,.08);
+       border:1px solid rgba(122,162,247,.16); border-radius:5px; padding:1px 5px}
+
+  /* ---------- buttons ---------- */
+  .row{display:flex; gap:9px; flex-wrap:wrap; align-items:center}
+  .row.mt{margin-top:14px}
+  .btn{
+    position:relative; background:var(--surface-2); color:var(--fg);
+    border:1px solid var(--line); border-radius:var(--r-md); padding:9px 14px;
+    font:13px/1 inherit; cursor:pointer; transition:background .16s,border-color .16s,transform .06s,box-shadow .2s;
+  }
+  .btn:hover{background:var(--surface-3); border-color:var(--line-strong)}
+  .btn:active{transform:translateY(1px) scale(.995)}
+  .btn:focus-visible{outline:2px solid var(--ring); outline-offset:2px}
+  .btn[disabled]{opacity:.55; cursor:not-allowed}
+  .btn.primary{
+    background:linear-gradient(180deg, rgba(122,162,247,.24), rgba(167,139,250,.14));
+    border-color:rgba(122,162,247,.45); color:#eaf0ff; font-weight:600;
+    box-shadow:0 10px 30px -16px rgba(122,162,247,.9), 0 0 0 1px rgba(255,255,255,.03) inset;
+  }
+  .btn.primary:hover{box-shadow:0 14px 34px -14px rgba(122,162,247,1)}
+  .btn.danger{color:#ffc9cd; border-color:rgba(242,96,106,.35)}
+  .btn.danger:hover{background:rgba(242,96,106,.12)}
+  .btn.ghost{background:transparent}
+  .btn.armed{
+    background:rgba(242,96,106,.14); border-color:rgba(242,96,106,.5); color:#ffd0d3;
+  }
+
+  /* ---------- stats ---------- */
+  .stats{display:flex; flex-direction:column; gap:0; margin-top:2px}
+  .stat{display:flex; justify-content:space-between; gap:14px; padding:8px 0; border-bottom:1px dashed var(--line); font-size:13px}
   .stat:last-child{border-bottom:none}
-  .stat .k{color:var(--fg-dim)}
-  .stat .v{color:var(--fg); text-align:right; word-break:break-all; font-variant-numeric:tabular-nums}
+  .stat .k{color:var(--fg-3)}
+  .stat .v{color:var(--fg); text-align:right; word-break:break-all}
+  .stat .v small{color:var(--fg-3)}
+
+  /* ---------- mapping visual ---------- */
+  .map{display:flex; flex-direction:column; gap:10px; margin-top:2px}
+  .maprow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12.5px}
+  .tag{
+    border:1px solid var(--line); background:var(--surface-2); border-radius:999px;
+    padding:4px 10px; color:var(--fg-2); font:12px ui-monospace,Consolas,monospace;
+  }
+  .tag.hit{border-color:rgba(70,211,154,.35); color:#bdf0da; background:rgba(70,211,154,.1)}
+  .arrow{color:var(--fg-3)}
+  .kpi{display:flex; gap:18px; margin-top:14px; padding-top:13px; border-top:1px solid var(--line)}
+  .kpi div{display:flex; flex-direction:column; gap:2px}
+  .kpi b{font-size:18px; font-weight:650; letter-spacing:.2px}
+  .kpi span{font-size:11.5px; color:var(--fg-3)}
+
+  /* ---------- checks ---------- */
+  .checks{display:flex; flex-direction:column; gap:7px; margin-top:14px}
+  .check{display:flex; align-items:center; gap:9px; font-size:12.5px}
+  .check .b{width:17px; text-align:center}
+  .check.ok .b{color:var(--ok)} .check.bad .b{color:var(--err)}
+  .check .d{color:var(--fg-3); margin-left:auto; font:11.5px ui-monospace,Consolas,monospace}
+
+  /* ---------- log ---------- */
+  .logwrap{position:relative; margin-top:4px}
+  .logwrap::after{content:""; position:absolute; inset:auto 0 0 0; height:34px; pointer-events:none;
+    background:linear-gradient(to top, rgba(10,10,13,.95), transparent)}
   pre.log{
-    margin:0; background:#0b0b0d; border:1px solid var(--line); border-radius:9px;
-    padding:12px; max-height:300px; overflow:auto; white-space:pre-wrap;
-    font:12px/1.5 ui-monospace,Consolas,monospace; color:#c9c9d1;
+    margin:0; background:rgba(8,8,11,.75); border:1px solid var(--line); border-radius:var(--r-md);
+    padding:12px 13px; height:268px; overflow:auto; white-space:pre-wrap; word-break:break-word;
+    font:12px/1.65 ui-monospace,"Cascadia Code",Consolas,monospace; color:#b9bdc9;
+    scrollbar-width:thin;
   }
-  .checks{display:flex; flex-direction:column; gap:6px}
-  .check{display:flex; align-items:center; gap:9px; font-size:13px}
-  .check .badge{width:16px; text-align:center}
-  .checks-ok{color:var(--ok)} .checks-err{color:var(--err)}
+  pre.log .t{color:#565b68}
+  pre.log .m{color:#c9cdfa}
+  pre.log .s2{color:var(--ok)} pre.log .s4{color:var(--warn)} pre.log .s5{color:var(--err)}
+  pre.log .ms{color:#565b68}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12); border-radius:9px}
+  ::-webkit-scrollbar-track{background:transparent}
+
+  /* ---------- toast ---------- */
   #toast{
-    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
-    background:var(--card-2); border:1px solid var(--line); border-radius:10px;
-    padding:11px 16px; font-size:13px; max-width:min(680px,90vw);
-    opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; z-index:9;
+    position:fixed; left:50%; bottom:26px; transform:translate(-50%,16px);
+    min-width:220px; max-width:min(680px,92vw);
+    background:rgba(24,24,31,.92); border:1px solid var(--line-strong); border-radius:var(--r-md);
+    padding:12px 16px; font-size:13px; backdrop-filter:blur(14px);
+    box-shadow:0 24px 50px -22px rgba(0,0,0,.95);
+    opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:20; overflow:hidden;
   }
-  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
-  #toast.ok{border-color:#245c42} #toast.err{border-color:#5c2b2b}
-  .split{display:flex; gap:8px; flex-wrap:wrap}
-  .muted{color:var(--fg-dim2)}
-  code{font:12px ui-monospace,Consolas,monospace; color:#cfd3ff}
+  #toast::after{content:""; position:absolute; left:0; bottom:0; height:2px; width:100%;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2)); opacity:.7;
+    transform-origin:left; animation:bar 3.5s linear forwards}
+  #toast.show{opacity:1; transform:translate(-50%,0)}
+  #toast.ok{border-color:rgba(70,211,154,.45)} #toast.err{border-color:rgba(242,96,106,.5)}
+  #toast.err::after{background:var(--err)} #toast.ok::after{background:var(--ok)}
+  @keyframes bar{from{transform:scaleX(1)} to{transform:scaleX(0)}}
+
+  .skel{height:13px; border-radius:6px; background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.11),rgba(255,255,255,.05));
+    background-size:200% 100%; animation:sh 1.3s linear infinite}
+  @keyframes sh{from{background-position:200% 0} to{background-position:-200% 0}}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important; transition:none !important}
+  }
 </style>
 </head>
 <body>
+<div class="bg"></div>
 <div class="wrap">
-  <header>
-    <h1>DeepSeek 网关</h1>
-    <span class="sub">本机模型出口 · Cursor 与任何 OpenAI 兼容客户端</span>
-  </header>
-  <div class="pills" id="pills"><span class="pill"><span class="dot"></span>读取状态…</span></div>
 
-  <div class="card">
-    <h2>API Key</h2>
-    <p class="desc">DeepSeek 的 key。留空则自动用环境变量 <code>GW_API_KEY</code> 或 dsh 已保存的 key。</p>
-    <div class="grid">
+  <div class="topbar">
+    <div class="brandline">
+      <div class="mark">D</div>
       <div>
-        <label class="fld">DeepSeek API Key</label>
-        <input id="apiKey" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" />
+        <h1>DeepSeek 网关</h1>
+        <div class="sub">本机模型出口 · Cursor / Continue / 任何 OpenAI 兼容客户端</div>
       </div>
-      <div>
-        <label class="fld">当前来源</label>
-        <input id="keySource" type="text" readonly />
+      <div class="urlchip">
+        <b id="baseUrl">http://127.0.0.1:8787/v1</b>
+        <button class="copy" id="copyUrl">复制</button>
       </div>
     </div>
-    <div class="row" style="margin-top:12px">
-      <button class="primary" data-save-key>保存</button>
-      <button data-act="test-upstream">测试连接</button>
-      <button data-read-dsh>改用 dsh 里的 key</button>
-      <span class="hint">key 只写入本机 <span class="kbd">config.json</span>，不进 git。</span>
+    <div class="chips" id="chips">
+      <span class="chip"><span class="dot"></span><span class="skel" style="width:90px"></span></span>
+      <span class="chip"><span class="dot"></span><span class="skel" style="width:70px"></span></span>
     </div>
   </div>
 
-  <div class="card">
-    <h2>服务</h2>
-    <p class="desc">客户端把这个地址填进「Override OpenAI Base URL」；模型名随便填，网关会映射。</p>
-    <div class="grid">
-      <div><label class="fld">监听端口</label><input id="port" type="number" min="1" max="65535" /></div>
-      <div><label class="fld">普通模型名 → 实际模型</label><input id="flashModel" type="text" /></div>
-      <div><label class="fld">pro / reasoner 名 → 实际模型</label><input id="proModel" type="text" /></div>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <button class="primary" data-save-svc>保存</button>
-      <button data-act="restart-gateway">重启网关</button>
-      <button data-act="autostart-install">注册开机自启</button>
-      <button data-act="autostart-remove">取消开机自启</button>
-    </div>
-  </div>
+  <div class="bento">
 
-  <div class="card" id="cursorCard" hidden>
-    <h2>Cursor 集成</h2>
-    <p class="desc">把上面这个 Base URL 写进 Cursor，让它的模型出口指向本网关。写入前需要先完全退出 Cursor。</p>
-    <div id="cursorStats"></div>
-    <div class="row" style="margin-top:12px" id="cursorActions"></div>
-  </div>
+    <section class="card span2" id="keyCard">
+      <h2><span class="ico">◈</span>API Key<span class="badge">只需填这一处</span></h2>
+      <p class="desc">DeepSeek 的 key。留空则自动回退到环境变量 <code>GW_API_KEY</code> 或 dsh 已保存的 key（<code>~/.dsh/.credentials.yaml</code>）。</p>
+      <div class="grid2">
+        <div>
+          <label for="apiKey">DeepSeek API Key</label>
+          <input id="apiKey" type="password" placeholder="sk-…" autocomplete="off" spellcheck="false" />
+        </div>
+        <div>
+          <label for="keySource">当前来源</label>
+          <input id="keySource" type="text" readonly />
+        </div>
+      </div>
+      <div class="row mt">
+        <button class="btn primary" data-save-key>保存</button>
+        <button class="btn" data-act="test-upstream">测试连接</button>
+        <button class="btn ghost" data-read-dsh>改用 dsh 里的 key</button>
+      </div>
+      <div class="hint">key 只写入本机 <kbd>config.json</kbd>（已在 .gitignore），不会上传任何地方。</div>
+    </section>
 
-  <div class="card" id="patchCard" hidden>
-    <h2>本机客户端补丁 <span class="muted" style="font-weight:400;font-size:12px">仅本地</span></h2>
-    <p class="desc">这些动作会修改本机安装的编辑器文件，只在装了 <code>local-actions.mjs</code> 时出现，不会上传到仓库。</p>
-    <div id="patchStats"></div>
-    <div class="row" style="margin-top:12px" id="patchActions"></div>
-  </div>
+    <section class="card" id="svcCard">
+      <h2><span class="ico">⚙</span>服务</h2>
+      <p class="desc">端口与模型映射，保存后立即生效。</p>
+      <div class="grid3">
+        <div><label for="port">监听端口</label><input id="port" type="number" min="1" max="65535" /></div>
+        <div><label for="flashModel">普通模型名 → 实际模型</label><input id="flashModel" type="text" /></div>
+        <div><label for="proModel">pro / reasoner → 模型</label><input id="proModel" type="text" /></div>
+      </div>
+      <div class="row mt">
+        <button class="btn primary" data-save-svc>保存</button>
+        <button class="btn" data-act="restart-gateway">重启网关</button>
+      </div>
+      <div class="kpi" id="kpi">
+        <div><b data-count="requests">–</b><span>已处理请求</span></div>
+        <div><b data-count="uptimeSec">–</b><span>运行时长</span></div>
+        <div><b data-count="models">–</b><span>可用模型</span></div>
+      </div>
+    </section>
 
-  <div class="card">
-    <h2>动作</h2>
-    <p class="desc">一键完成剩下的活。</p>
-    <div class="split" id="coreActions"></div>
-    <div id="probeResult" style="margin-top:14px"></div>
-  </div>
+    <section class="card" id="mapCard">
+      <h2><span class="ico">⇄</span>模型名映射</h2>
+      <p class="desc">客户端想叫什么名字都行 —— 网关按规则换成 DeepSeek 真正认的 id。</p>
+      <div class="map">
+        <div class="maprow">
+          <span class="tag">名字含 pro / reasoner / r1</span><span class="arrow">→</span>
+          <span class="tag hit" id="mapPro">deepseek-v4-pro</span>
+        </div>
+        <div class="maprow">
+          <span class="tag">其余任何名字（claude-* / gpt-* / o3 / 自定义）</span><span class="arrow">→</span>
+          <span class="tag hit" id="mapFlash">deepseek-flash</span>
+        </div>
+      </div>
+      <div class="row mt" style="gap:10px">
+        <input id="mapTry" placeholder="随便输个模型名试试实时映射…" style="flex:1;min-width:190px" spellcheck="false" />
+        <span class="tag hit" id="mapOut">→ deepseek-flash</span>
+      </div>
+      <div class="row" style="margin-top:9px;gap:7px">
+        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="gpt-4o">gpt-4o</button>
+        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="claude-4.5-sonnet">claude-4.5-sonnet</button>
+        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="o3-mini">o3-mini</button>
+        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="deepseek-v4-pro">deepseek-v4-pro</button>
+        <button class="btn ghost" style="padding:6px 10px;font-size:12px" data-try="please-enable-some-models">验证探针名</button>
+      </div>
+    </section>
 
-  <div class="card">
-    <h2>请求日志
-      <button style="margin-left:auto;font-size:12px;padding:5px 10px" id="logToggle">暂停刷新</button>
-    </h2>
-    <p class="desc" id="logPath">最近 60 条</p>
-    <pre class="log" id="log">加载中…</pre>
+    <section class="card" id="cursorCard" hidden>
+      <h2><span class="ico">◎</span>Cursor 集成<span class="badge">本机</span></h2>
+      <p class="desc">把 Base URL 写进 Cursor，让它的模型出口指向本网关。写入前需完全退出 Cursor。</p>
+      <div class="stats" id="cursorStats"></div>
+      <div class="row mt" id="cursorActions"></div>
+    </section>
+
+    <section class="card" id="patchCard" hidden>
+      <h2><span class="ico">⌘</span>客户端补丁<span class="badge">仅本地 · 不进仓库</span></h2>
+      <p class="desc">修改本机编辑器安装文件。只在存在 <code>local-actions.mjs</code> 时出现，公开仓库里没有这些动作。</p>
+      <div class="stats" id="patchStats"></div>
+      <div class="row mt" id="patchActions"></div>
+    </section>
+
+    <section class="card span2" id="actionsCard">
+      <h2><span class="ico">▶</span>动作</h2>
+      <p class="desc">一键完成剩下的活。危险动作需要点两次确认。</p>
+      <div class="row" id="coreActions"></div>
+      <div class="checks" id="probeResult"></div>
+    </section>
+
+    <section class="card span2" id="logCard">
+      <h2><span class="ico">≡</span>请求日志
+        <button class="btn ghost" style="margin-left:auto;padding:6px 11px;font-size:12px" id="logToggle">暂停刷新</button>
+      </h2>
+      <p class="desc" id="logDesc">实时 tail（3 秒）· 只记录客户端请求，面板自身的调用不入日志</p>
+      <div class="logwrap"><pre class="log" id="log">加载中…</pre></div>
+    </section>
+
   </div>
 </div>
 <div id="toast"></div>
 
 <script>
 const $ = (s) => document.querySelector(s);
-let status = null;
-let logPaused = false;
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+let status = null, logPaused = false;
 
+/* ---------- toast ---------- */
 function toast(msg, kind) {
   const t = $('#toast');
   t.textContent = msg;
@@ -177,6 +381,7 @@ function toast(msg, kind) {
   t._t = setTimeout(() => { t.className = ''; }, kind === 'err' ? 6000 : 3500);
 }
 
+/* ---------- api ---------- */
 async function api(path, opts) {
   const r = await fetch(path, opts);
   const text = await r.text();
@@ -185,30 +390,71 @@ async function api(path, opts) {
   return json;
 }
 
-function pill(label, state, extra) {
-  const cls = state === true ? 'ok' : state === false ? 'err' : 'warn';
-  return `<span class="pill"><span class="dot ${cls}"></span>${label}${extra ? ' · ' + extra : ''}</span>`;
+/* ---------- cursor spotlight on cards ---------- */
+document.addEventListener('pointermove', (e) => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+  const r = card.getBoundingClientRect();
+  card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+  card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+}, { passive: true });
+
+/* ---------- count-up ---------- */
+function countUp(el, to) {
+  const from = Number(el.dataset.cur || 0);
+  if (from === to) return;
+  el.dataset.cur = to;
+  const steps = 18, delta = (to - from) / steps;
+  let i = 0;
+  const tick = () => {
+    i++;
+    el.textContent = Math.round(from + delta * i).toLocaleString();
+    if (i < steps) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
+function fmtUptime(sec) {
+  if (sec < 60) return sec + ' 秒';
+  if (sec < 3600) return Math.floor(sec / 60) + ' 分';
+  return (sec / 3600).toFixed(1) + ' 小时';
+}
+
+function chip(label, state, extra) {
+  const cls = state === true ? 'ok' : state === false ? 'err' : 'warn';
+  return `<span class="chip"><span class="dot ${cls}"></span><b>${label}</b>${extra ? ' · ' + extra : ''}</span>`;
+}
+
+/* ---------- render ---------- */
 function renderStatus(s) {
   status = s;
   const g = s.gateway, k = s.key, up = s.upstream;
-  $('#pills').innerHTML = [
-    pill('网关运行中', true, `:${g.port} · ${g.requests} 请求 · ${Math.round(g.uptimeSec / 60)} 分钟`),
-    pill('DeepSeek 连接', !!up.ok, up.ok ? `${up.models.length} 个模型` : '失败'),
-    pill('API Key', !!k.present, k.present ? k.source : '未配置'),
-    s.cursor ? pill('Cursor', !!s.cursor.installed, s.cursor.version || '') : '',
+
+  $('#baseUrl').textContent = g.baseUrl;
+  $('#chips').innerHTML = [
+    chip('网关', true, `:${g.port} · pid ${g.pid}`),
+    chip('DeepSeek', !!up.ok, up.ok ? up.models.length + ' 个模型' : '连接失败'),
+    chip('API Key', !!k.present, k.present ? k.source : '未配置'),
+    s.cursor ? chip('Cursor', !!s.cursor.installed, s.cursor.version || '') : '',
   ].join('');
 
-  $('#keySource').value = (k.present ? `${k.source}（${k.length} 字符）` : '未配置');
+  const kpi = $('#kpi').querySelectorAll('b[data-count]');
+  countUp(kpi[0], g.requests);
+  kpi[1].textContent = fmtUptime(g.uptimeSec);
+  kpi[2].textContent = up.models.length;
+
+  $('#keySource').value = k.present ? `${k.source}（${k.length} 字符）` : '未配置';
   if (document.activeElement !== $('#apiKey')) $('#apiKey').placeholder = k.present ? '已保存 · 输入新值可覆盖' : 'sk-…';
   if (document.activeElement !== $('#port')) $('#port').value = g.port;
   if (document.activeElement !== $('#flashModel')) $('#flashModel').value = s.models.flash;
   if (document.activeElement !== $('#proModel')) $('#proModel').value = s.models.pro;
+  $('#mapFlash').textContent = s.models.flash;
+  $('#mapPro').textContent = s.models.pro;
+  updateMapOut();
 
   const core = s.actions.filter((a) => !a.local && a.name !== 'test-upstream');
   $('#coreActions').innerHTML = core.map((a) =>
-    `<button data-act="${a.name}" class="${a.danger ? 'danger' : ''}">${a.label}</button>`).join('');
+    `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.name}">${a.label}</button>`).join('');
 
   const localActs = s.actions.filter((a) => a.local);
   if (s.cursor) {
@@ -218,24 +464,39 @@ function renderStatus(s) {
       ['安装位置', c.exePath || '—'],
       ['版本', c.version || '—'],
       ['运行中', c.running ? '是' : '否'],
-      ['已写入的 Base URL', c.baseUrl || '未写入'],
+      ['已写入 Base URL', c.baseUrl || '未写入'],
       ['客户端补丁', c.patched === undefined ? '—' : (c.patched ? '已应用' : '未应用')],
-    ].map(([k2, v]) => `<div class="stat"><span class="k">${k2}</span><span class="v">${v}</span></div>`).join('');
+    ].map(([a, b]) => `<div class="stat"><span class="k">${a}</span><span class="v">${b}</span></div>`).join('');
   }
   if (s.localActionsLoaded && localActs.length) {
     $('#patchCard').hidden = false;
     const patchActs = localActs.filter((a) => /patch/.test(a.name));
     const other = localActs.filter((a) => !/patch/.test(a.name));
     $('#patchActions').innerHTML = [...patchActs, ...other].map((a) =>
-      `<button data-act="${a.name}" class="${a.danger ? 'danger' : ''}">${a.label}</button>`).join('');
-    $('#patchStats').innerHTML = s.cursor && s.cursor.patched !== undefined
-      ? `<div class="stat"><span class="k">补丁状态</span><span class="v">${s.cursor.patched ? '已应用' : '未应用'}</span></div>` : '';
+      `<button class="btn ${a.danger ? 'danger' : ''}" data-act="${a.name}">${a.label}</button>`).join('');
+    $('#patchStats').innerHTML = (s.cursor && s.cursor.patched !== undefined)
+      ? `<div class="stat"><span class="k">补丁状态</span><span class="v">${s.cursor.patched ? '已应用（7 处）' : '未应用'}</span></div>` : '';
   }
 }
 
 async function loadStatus() {
   try { renderStatus(await api('/api/status')); }
-  catch (e) { $('#pills').innerHTML = pill('无法连接网关', false, e.message); }
+  catch (e) { $('#chips').innerHTML = chip('无法连接网关', false, e.message); }
+}
+
+/* ---------- log with colourised status codes ---------- */
+function paint(raw) {
+  if (!raw) return '<span class="t">（还没有请求）</span>';
+  return raw.split('\n').map((line) => {
+    let h = line.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    h = h.replace(/^(\[[^\]]+\])/, '<span class="t">$1</span>');
+    h = h.replace(/->\s(\d{3})/, (m, code) =>
+      '<span style="color:#565b68">-></span> <span class="' +
+      (code[0] === '2' ? 's2' : code[0] === '4' ? 's4' : 's5') + '">' + code + '</span>');
+    h = h.replace(/\((\d+)ms\)/g, '<span class="ms">($1ms)</span>');
+    h = h.replace(/\b(chat|messages|passthrough|GET|POST)\b/, '<span class="m">$1</span>');
+    return h;
+  }).join('\n');
 }
 
 async function loadLog() {
@@ -243,11 +504,14 @@ async function loadLog() {
   try {
     const r = await api('/api/log?tail=60');
     const el = $('#log');
-    el.textContent = r.tail || '（还没有请求）';
-    el.scrollTop = el.scrollHeight;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    el.innerHTML = paint(r.tail);
+    if (atBottom) el.scrollTop = el.scrollHeight;
+    $('#logDesc').textContent = `实时 tail（3 秒）· ${(r.tail || '').split('\n').filter(Boolean).length} 条 · 面板自身的调用不入日志`;
   } catch { /* ignore */ }
 }
 
+/* ---------- actions ---------- */
 async function runAction(name, btn) {
   if (btn) btn.disabled = true;
   try {
@@ -256,8 +520,8 @@ async function runAction(name, btn) {
       body: JSON.stringify({ name }),
     });
     if (r.checks) {
-      $('#probeResult').innerHTML = '<div class="checks">' + r.checks.map((c) =>
-        `<div class="check ${c.ok ? 'checks-ok' : 'checks-err'}"><span class="badge">${c.ok ? '✓' : '✗'}</span>${c.name}<span class="muted">${c.detail || ''}</span></div>`).join('') + '</div>';
+      $('#probeResult').innerHTML = r.checks.map((c) =>
+        `<div class="check ${c.ok ? 'ok' : 'bad'}"><span class="b">${c.ok ? '✓' : '✗'}</span>${c.name}<span class="d">${c.detail || ''}</span></div>`).join('');
     }
     toast((r.ok ? '✓ ' : '✗ ') + (r.message || name), r.ok ? 'ok' : 'err');
   } catch (e) {
@@ -268,38 +532,87 @@ async function runAction(name, btn) {
   }
 }
 
+/* ---------- clipboard with fallback (works without the async clipboard permission) ---------- */
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch { return false; }
+}
+
+/* ---------- live model-name mapper (client-side, mirrors the server rule) ---------- */
+function mapped(name) {
+  const n = String(name || '').toLowerCase();
+  const mm = (status && status.models) || { flash: 'deepseek-flash', pro: 'deepseek-v4-pro' };
+  return /pro|reasoner|r1/.test(n) ? mm.pro : mm.flash;
+}
+function updateMapOut() {
+  const v = $('#mapTry').value.trim();
+  $('#mapOut').textContent = v ? '→ ' + mapped(v) : '→ ' + ((status && status.models) ? status.models.flash : 'deepseek-flash');
+}
+$('#mapTry').addEventListener('input', updateMapOut);
+
 document.addEventListener('click', (ev) => {
   const btn = ev.target.closest('button');
   if (!btn) return;
+
+  if (btn.dataset.try !== undefined) {
+    $('#mapTry').value = btn.dataset.try;
+    updateMapOut();
+    return;
+  }
+
+  if (btn.id === 'copyUrl') {
+    copyText($('#baseUrl').textContent).then((ok) => {
+      if (!ok) return toast('复制失败，请手动选中文本复制', 'err');
+      btn.textContent = '已复制'; btn.classList.add('done');
+      setTimeout(() => { btn.textContent = '复制'; btn.classList.remove('done'); }, 1600);
+    });
+    return;
+  }
+
   const act = btn.dataset.act;
   if (act) {
     if (btn.dataset.confirmed !== '1' && /restart|patch|revert|remove/.test(act)) {
       btn.dataset.confirmed = '1';
-      const orig = btn.textContent;
-      btn.textContent = '再点一次确认：' + orig;
-      setTimeout(() => { btn.dataset.confirmed = '0'; btn.textContent = orig; }, 4000);
+      btn.dataset.label = btn.textContent;
+      btn.textContent = '再点一次确认';
+      btn.classList.add('armed');
+      setTimeout(() => {
+        btn.dataset.confirmed = '0'; btn.textContent = btn.dataset.label; btn.classList.remove('armed');
+      }, 4000);
       return;
     }
+    btn.classList.remove('armed');
+    if (btn.dataset.label) btn.textContent = btn.dataset.label;
     return runAction(act, btn);
   }
+
   if (btn.hasAttribute('data-save-key')) {
     return api('/api/config', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ apiKey: $('#apiKey').value.trim() }),
     }).then((r) => { toast((r.ok ? '✓ ' : '✗ ') + (r.message || ''), r.ok ? 'ok' : 'err'); $('#apiKey').value = ''; loadStatus(); });
   }
+
   if (btn.hasAttribute('data-save-svc')) {
     return api('/api/config', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ port: Number($('#port').value), flashModel: $('#flashModel').value.trim(), proModel: $('#proModel').value.trim() }),
     }).then((r) => { toast((r.ok ? '✓ ' : '✗ ') + (r.message || ''), r.ok ? 'ok' : 'err'); loadStatus(); });
   }
+
   if (btn.hasAttribute('data-read-dsh')) {
-    const key = (status && status.key && status.key.source.includes('credentials.yaml'));
-    return key
-      ? api('/api/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ apiKey: '' }) })
-          .then((r) => { toast('✓ 已切回从 dsh 读取', 'ok'); loadStatus(); })
-      : toast('当前 key 不是来自 dsh，config.json 里没有内容可清', 'err');
+    const fromDsh = status && status.key && /credentials\.yaml/.test(status.key.source);
+    if (fromDsh) return toast('当前已经在用 dsh 里的 key（config.json 未覆盖）', 'ok');
+    return api('/api/config', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ apiKey: '' }) })
+      .then(() => { toast('✓ 已清掉 config.json 里的 key，回退到 dsh', 'ok'); loadStatus(); });
   }
 });
 
