@@ -68,34 +68,6 @@ export default function Routes() {
         )}
         {!loading && !data && <Loading label="未能读取路由表" />}
       </Card>
-
-      <Card title="请求分布" subtitle="按路由统计累计请求量">
-        {!metrics ? (
-          <Skeleton className="h-16 w-full" />
-        ) : (
-          <div className="flex flex-col gap-2.5">
-            {metrics.byRoute
-              .filter((r) => r.count > 0)
-              .sort((a, b) => b.count - a.count)
-              .map((r) => {
-                const max = Math.max(...metrics.byRoute.map((x) => x.count), 1);
-                return (
-                  <div key={r.route} className="flex items-center gap-3">
-                    <span className="w-44 shrink-0 truncate font-mono text-[11.5px] text-ink-2">{r.route}</span>
-                    <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-surface-3">
-                      <div
-                        className="h-full rounded-full bg-accent transition-[width] duration-300"
-                        style={{ width: `${(r.count / max) * 100}%`, transitionTimingFunction: 'var(--ease-out)' }}
-                      />
-                    </div>
-                    <span className="w-16 shrink-0 text-right font-mono text-[11.5px] text-ink-3">{fmtInt(r.count)}</span>
-                  </div>
-                );
-              })}
-            {metrics.byRoute.every((r) => r.count === 0) && <div className="py-4 text-center text-[12.5px] text-ink-4">还没有请求经过网关</div>}
-          </div>
-        )}
-      </Card>
     </div>
   );
 }

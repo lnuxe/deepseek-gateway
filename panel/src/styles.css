@@ -100,19 +100,22 @@ body {
   z-index: 0;
   pointer-events: none;
   background-repeat: no-repeat;
-  /* 放得更大、压到画面下沿：只留一道地平线暖光，而不是一个漂浮的圆 */
-  background-size: 165%;
-  background-position: 50% 104%;
-  opacity: 0.3;
+  /* 真正当背景用：铺满视口，日出落在上三分之一处 */
+  background-size: cover;
+  background-position: 50% 38%;
+  opacity: 0.42;
   mix-blend-mode: screen;
 }
 
-/* 底图下方的压暗，避免暖光顶到内容区 */
+/* 上方留图、下方压暗，保证卡片与文字始终压得住 */
 .bg-art::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, transparent 18%, rgba(14, 17, 20, 0.55) 52%, rgba(14, 17, 20, 0.9) 78%);
+  background:
+    radial-gradient(90% 60% at 50% 30%, transparent 30%, rgba(14, 17, 20, 0.45) 100%),
+    linear-gradient(to bottom, transparent 34%, rgba(14, 17, 20, 0.62) 68%, rgba(14, 17, 20, 0.92) 100%);
+  mix-blend-mode: multiply;
 }
 
 .bg-grid {

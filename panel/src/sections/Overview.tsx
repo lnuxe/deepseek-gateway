@@ -3,10 +3,10 @@ import { getLog, getMetrics } from '../lib/api';
 import { useConsole } from '../lib/console';
 import { usePoll } from '../hooks/usePoll';
 import { fmtInt, fmtMs, fmtPct, fmtUptime, parseLogLine, statusTone } from '../lib/format';
-import { Card, Dot, Loading, Row, Rows, Skeleton, Stat } from '../components/ui/primitives';
+import { Card, Dot, Row, Rows, Skeleton, Stat } from '../components/ui/primitives';
 import { HeroBand } from '../components/layout/HeroBand';
 import { Sparkline } from '../components/ui/charts';
-import { IconCert, IconConsumers, IconPlay, IconRefresh, IconRoutes, IconUpstream } from '../components/sketch/icons';
+import { IconPlay, IconUpstream } from '../components/sketch/icons';
 
 export default function Overview({ onNavigate }: { onNavigate: (id: string) => void }) {
   const { status, act, busy } = useConsole();
@@ -124,17 +124,17 @@ export default function Overview({ onNavigate }: { onNavigate: (id: string) => v
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         {/* 快捷动作 */}
-        <Card title="快捷操作" subtitle="常用的三个检查" className="lg:col-span-1">
+        <Card title="快捷操作" subtitle="不常用的放在这里，日常只跑这两个" className="lg:col-span-1">
           <div className="flex flex-col gap-2">
             <button
               type="button"
-              onClick={() => act('probe')}
+              onClick={() => act('probe', { dialogOn: 'checks' })}
               disabled={busy === 'probe'}
               className="focus-ring flex items-center gap-2.5 rounded-[8px] border border-hair bg-surface px-3 py-2.5 text-left text-[12.5px] transition-colors hover:border-hair-2 hover:bg-surface-2 disabled:opacity-50"
             >
               <IconPlay size={16} className="text-accent" />
               <span className="flex-1">运行自检</span>
-              <span className="text-[11px] text-ink-4">{busy === 'probe' ? '执行中' : '7 项'}</span>
+              <span className="text-[11px] text-ink-4">{busy === 'probe' ? '执行中' : '5 项'}</span>
             </button>
             <button
               type="button"
@@ -146,15 +146,13 @@ export default function Overview({ onNavigate }: { onNavigate: (id: string) => v
               <span className="flex-1">测试上游连接</span>
               <span className="text-[11px] text-ink-4">{status.upstream.latencyMs ? fmtMs(status.upstream.latencyMs) : '—'}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('logs')}
-              className="focus-ring flex items-center gap-2.5 rounded-[8px] border border-hair bg-surface px-3 py-2.5 text-left text-[12.5px] transition-colors hover:border-hair-2 hover:bg-surface-2"
-            >
-              <IconRefresh size={16} className="text-ink-3" />
-              <span className="flex-1">查看实时日志</span>
-              <span className="text-[11px] text-ink-4">tail</span>
-            </button>
+            <div className="mt-0.5 rounded-[8px] border border-dashed border-hair px-3 py-2.5 text-[11.5px] leading-relaxed text-ink-4">
+              需要改 key / 端口 / 自启，或查看客户端补丁？都在
+              <button type="button" onClick={() => onNavigate('settings')} className="focus-ring mx-1 text-ink-2 underline decoration-dotted underline-offset-2 hover:text-ink">
+                系统设置
+              </button>
+              里。
+            </div>
           </div>
         </Card>
 
@@ -195,31 +193,6 @@ export default function Overview({ onNavigate }: { onNavigate: (id: string) => v
           )}
         </Card>
       </div>
-
-      {/* 结构导览 */}
-      <Card title="控制台结构" subtitle="这个网关由哪些部分组成" bare>
-        <div className="grid grid-cols-1 divide-y divide-[var(--c-hair)] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4">
-          {[
-            { id: 'routes', label: '网关路由', desc: `${status.upstream.models.length ? '6' : '6'} 条对外接口`, Icon: IconRoutes },
-            { id: 'upstreams', label: '上游服务', desc: 'DeepSeek OpenAI / Anthropic', Icon: IconUpstream },
-            { id: 'consumers', label: '消费者', desc: status.cursor ? 'Cursor 已检测到' : '暂无客户端', Icon: IconConsumers },
-            { id: 'certificates', label: '证书', desc: '上游 TLS 有效期', Icon: IconCert },
-          ].map(({ id, label, desc, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onNavigate(id)}
-              className="focus-ring flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface sm:border-r sm:border-hair last:border-r-0"
-            >
-              <Icon size={20} className="shrink-0 text-ink-3" />
-              <span className="min-w-0">
-                <span className="block truncate text-[12.5px] text-ink">{label}</span>
-                <span className="block truncate text-[11px] text-ink-4">{desc}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </Card>
     </div>
   );
 }

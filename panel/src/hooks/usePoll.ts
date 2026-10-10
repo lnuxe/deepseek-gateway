@@ -4,9 +4,9 @@ type State<T> = { data: T | null; error: string | null; loading: boolean };
 
 /**
  * 轮询接口，只在「页面可见 + enabled」时请求，避免后台空转。
- * 用于控制台各页的实时数据（状态、指标、日志）。
+ * key 变化时会立刻重新拉取（例如日志页切换 tail 条数）。
  */
-export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number, enabled = true) {
+export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number, enabled = true, key: string | number = '') {
   const [state, setState] = useState<State<T>>({ data: null, error: null, loading: true });
   const inFlight = useRef(false);
   const fetcherRef = useRef(fetcher);
@@ -47,7 +47,7 @@ export function usePoll<T>(fetcher: () => Promise<T>, intervalMs: number, enable
       stop();
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [enabled, intervalMs, load]);
+  }, [enabled, intervalMs, load, key]);
 
   return { ...state, refresh: load };
 }

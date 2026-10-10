@@ -424,14 +424,37 @@ const CORE_ACTIONS = {
   'restart-gateway': { label: '重启网关', confirm: true, run: async () => restartGateway() },
 };
 
+/**
+ * 解码子进程输出。
+ *
+ * 中文 Windows 上 schtasks / taskkill / net 这类自带工具输出的是 GBK(936) 字节，
+ * 直接按 UTF-8 解码就会出现「鎴愬姛」这类乱码（面板提示弹窗里看到的就是它）。
+ * 先按严格 UTF-8 试，失败再退回 GBK，最后兜底 latin1，两种编码都能正确显示。
+ */
+function decodeOutput(buf) {
+  if (!buf.length) return '';
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+  } catch { /* 不是 UTF-8，继续 */ }
+  for (const enc of ['gbk', 'gb18030']) {
+    try {
+      return new TextDecoder(enc).decode(buf);
+    } catch { /* 该编码不可用，换下一个 */ }
+  }
+  return buf.toString('latin1');
+}
+
 function runCmd(file, args) {
   return new Promise((resolve) => {
     const child = spawn(file, args, { windowsHide: true });
-    let out = '';
-    child.stdout.on('data', (d) => { out += d; });
-    child.stderr.on('data', (d) => { out += d; });
+    const chunks = [];
+    child.stdout.on('data', (d) => chunks.push(d));
+    child.stderr.on('data', (d) => chunks.push(d));
     child.on('error', (err) => resolve({ ok: false, message: err.message }));
-    child.on('close', (code) => resolve({ ok: code === 0, code, message: out.trim().slice(0, 800) }));
+    child.on('close', (code) => {
+      const out = decodeOutput(Buffer.concat(chunks));
+      resolve({ ok: code === 0, code, message: out.trim().split('\n').slice(-6).join('\n').slice(0, 800) });
+    });
   });
 }
 

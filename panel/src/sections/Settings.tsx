@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { copyText, getStatus, saveConfig } from '../lib/api';
+import { copyText, saveConfig } from '../lib/api';
 import { useConsole } from '../lib/console';
 import { fmtMs, fmtUptime } from '../lib/format';
 import { Badge, Button, Card, Dot, Row, Rows, Skeleton } from '../components/ui/primitives';
@@ -82,7 +82,7 @@ export default function Settings() {
               <Button tone="primary" size="sm" icon={<IconCheck size={13} />} loading={savingKey} onClick={saveKey} disabled={!key.trim()}>
                 保存并测试
               </Button>
-              <Button size="sm" icon={<IconPlay size={13} />} loading={busy === 'test-upstream'} onClick={() => act('test-upstream')}>
+              <Button size="sm" icon={<IconPlay size={13} />} loading={busy === 'test-upstream'} onClick={() => act('test-upstream', { dialogOn: 'always' })}>
                 只测试连接
               </Button>
             </div>

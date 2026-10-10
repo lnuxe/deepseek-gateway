@@ -55,11 +55,22 @@ export default function Consumers() {
                 size="sm"
                 icon={<IconCheck size={13} />}
                 loading={busy === 'cursor-write-config'}
-                onClick={() => act('cursor-write-config')}
+                onClick={() => {
+                  if (!window.confirm('写入会修改 Cursor 的本地设置（Base URL / 密钥开关 / 模型列表），请先完全退出 Cursor。确定写入？')) return;
+                  act('cursor-write-config');
+                }}
               >
                 写入 Cursor 配置
               </Button>
-              <Button size="sm" icon={<IconRefresh size={13} />} loading={busy === 'restart-cursor'} onClick={() => act('restart-cursor')}>
+              <Button
+                size="sm"
+                icon={<IconRefresh size={13} />}
+                loading={busy === 'restart-cursor'}
+                onClick={() => {
+                  if (!window.confirm('重启 Cursor 会关闭当前窗口，确定继续？')) return;
+                  act('restart-cursor');
+                }}
+              >
                 重启 Cursor
               </Button>
               <Button

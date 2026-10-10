@@ -17,7 +17,7 @@ export default function Logs() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]['id']>('all');
   const [query, setQuery] = useState('');
   const [tail, setTail] = useState(200);
-  const { data, loading } = usePoll(() => getLog(tail), paused ? 0 : 4000, !paused);
+  const { data, loading } = usePoll(() => getLog(tail), paused ? 0 : 4000, !paused, tail);
   const boxRef = useRef<HTMLDivElement>(null);
   const stickRef = useRef(true);
 
@@ -52,7 +52,7 @@ export default function Logs() {
     <div className="flex flex-col gap-3">
       <Card
         title="请求日志"
-        subtitle="网关每转发一次请求记录一行，包含模型、流式标志、状态码与耗时"
+        subtitle="每转发一次记录一行（模型 · 流式标志 · 状态码 · 耗时），同时落盘到 gateway.log"
         bare
         actions={
           <div className="flex items-center gap-2">
@@ -124,15 +124,6 @@ export default function Logs() {
               </div>
             );
           })}
-        </div>
-      </Card>
-
-      <Card title="日志文件" subtitle="日志同时写入磁盘，便于外部工具消费">
-        <div className="flex items-center justify-between gap-3">
-          <code className="min-w-0 truncate rounded-[6px] border border-hair bg-surface px-2 py-1.5 font-mono text-[11.5px] text-ink-3">
-            gateway.log
-          </code>
-          <span className="text-[11.5px] text-ink-4">轮转：由网关按行写入，控制台只读取尾部</span>
         </div>
       </Card>
     </div>

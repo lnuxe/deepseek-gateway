@@ -1,5 +1,5 @@
 import { useConsole } from '../lib/console';
-import { Badge, Card, Dot } from '../components/ui/primitives';
+import { Card, Dot } from '../components/ui/primitives';
 import { SketchRule } from '../components/sketch/icons';
 
 /** 请求管线上的内置处理环节 —— 只读展示，网关按固定顺序执行 */
@@ -50,7 +50,6 @@ const PIPELINE = [
 
 export default function Plugins() {
   const { status } = useConsole();
-  const custom = status?.localActionsLoaded;
 
   return (
     <div className="flex flex-col gap-3">
@@ -80,41 +79,18 @@ export default function Plugins() {
 
       <SketchRule className="opacity-70" />
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-        <Card title="客户端补丁" subtitle="仅本机、不进仓库的适配脚本">
-          <div className="flex items-center gap-2">
-            <Dot tone={status?.cursor?.patched ? 'ok' : 'muted'} breathe={!!status?.cursor?.patched} />
-            <span className="text-[12.5px] text-ink-2">
-              {status?.cursor?.patched === undefined ? '未检测' : status.cursor?.patched ? '已应用' : '未应用'}
-            </span>
-          </div>
-          <p className="mt-2 text-[11.5px] leading-relaxed text-ink-4">
-            补丁用于让本机客户端走本地推理入口。它由独立的本地脚本管理（<span className="font-mono">local-actions.mjs</span>），
-            只在检测到该文件时出现对应操作入口，位于「系统设置 → 客户端补丁」。
-          </p>
-        </Card>
-
-        <Card title="扩展点" subtitle="当前版本内置的确定性行为">
-          <ul className="flex flex-col gap-2 text-[11.5px] text-ink-3">
-            <li className="flex items-center justify-between gap-3">
-              <span>自定义动作脚本</span>
-              <Badge tone={custom ? 'ok' : 'muted'}>{custom ? '已加载' : '未加载'}</Badge>
-            </li>
-            <li className="flex items-center justify-between gap-3">
-              <span>请求体重写</span>
-              <Badge tone="muted">固定白名单</Badge>
-            </li>
-            <li className="flex items-center justify-between gap-3">
-              <span>限流 / 配额</span>
-              <Badge tone="muted">未启用</Badge>
-            </li>
-            <li className="flex items-center justify-between gap-3">
-              <span>缓存</span>
-              <Badge tone="muted">透传，不缓存</Badge>
-            </li>
-          </ul>
-        </Card>
-      </div>
+      <Card title="客户端补丁" subtitle="仅本机、不进仓库的适配脚本">
+        <div className="flex items-center gap-2">
+          <Dot tone={status?.cursor?.patched ? 'ok' : 'muted'} breathe={!!status?.cursor?.patched} />
+          <span className="text-[12.5px] text-ink-2">
+            {status?.cursor?.patched === undefined ? '未检测' : status.cursor?.patched ? '已应用' : '未应用'}
+          </span>
+        </div>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-4">
+          补丁用于让本机客户端走本地推理入口，由独立的本地脚本管理（<span className="font-mono">local-actions.mjs</span>）。
+          检查 / 应用 / 回滚入口在「系统设置 → 客户端补丁」，检测不到脚本时不会出现。
+        </p>
+      </Card>
     </div>
   );
 }

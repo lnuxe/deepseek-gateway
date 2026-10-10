@@ -81,7 +81,6 @@ export function Topbar({
         <span className="hidden text-ink-4 sm:inline">控制台</span>
         <IconChevron size={13} dir="right" />
         <span className="truncate font-medium text-ink">{nav.label}</span>
-        <span className="hidden truncate text-ink-4 md:inline">· {nav.desc}</span>
       </nav>
 
       <div className="ml-auto flex items-center gap-1.5">
